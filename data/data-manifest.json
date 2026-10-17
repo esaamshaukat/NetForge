@@ -1,0 +1,242 @@
+{
+ "dataVersion": "b384169a9d",
+ "builtAt": 1792233477,
+ "files": {
+  "card-images-01.enc": {
+   "v": "4626b455db",
+   "size": 918656
+  },
+  "card-images-02.enc": {
+   "v": "586e809507",
+   "size": 764250
+  },
+  "cards-automation-programmability.enc": {
+   "v": "f0ed390cfa",
+   "size": 22793
+  },
+  "cards-bgp.enc": {
+   "v": "2e37bdb407",
+   "size": 19143
+  },
+  "cards-campus-design-high-availability.enc": {
+   "v": "10c8beed32",
+   "size": 7697
+  },
+  "cards-cisco-sd-access.enc": {
+   "v": "8eb259dee9",
+   "size": 5915
+  },
+  "cards-cisco-sd-wan.enc": {
+   "v": "d1cd4e888b",
+   "size": 4985
+  },
+  "cards-cloud-vs-on-premises.enc": {
+   "v": "918137bf33",
+   "size": 1620
+  },
+  "cards-eigrp.enc": {
+   "v": "f71e7f56fe",
+   "size": 6350
+  },
+  "cards-fhrp-hsrp-vrrp-glbp.enc": {
+   "v": "b1a2704b10",
+   "size": 7345
+  },
+  "cards-hypervisors-virtual-machines.enc": {
+   "v": "18761335fb",
+   "size": 6084
+  },
+  "cards-infrastructure-security-acls-aaa-hardening.enc": {
+   "v": "531b2c1dc4",
+   "size": 21248
+  },
+  "cards-ip-services-dhcp-nat-ntp-dns.enc": {
+   "v": "a6ab375e54",
+   "size": 8604
+  },
+  "cards-layer-2-switching-vlan-stp-etherchannel.enc": {
+   "v": "578e83f5f7",
+   "size": 23122
+  },
+  "cards-lisp-vxlan.enc": {
+   "v": "a03ec90327",
+   "size": 8021
+  },
+  "cards-multicast-pim-rp.enc": {
+   "v": "3adbf683d9",
+   "size": 12461
+  },
+  "cards-network-access-security-802-1x-ise-wlan-security.enc": {
+   "v": "2a59ef2acb",
+   "size": 1861
+  },
+  "cards-network-assurance-monitoring.enc": {
+   "v": "af66418aa8",
+   "size": 15998
+  },
+  "cards-ospf.enc": {
+   "v": "e5dbc84019",
+   "size": 20789
+  },
+  "cards-packet-forwarding-rib-fib-cef-tcam.enc": {
+   "v": "d08bfe5484",
+   "size": 8731
+  },
+  "cards-qos.enc": {
+   "v": "25d34c7c1d",
+   "size": 8518
+  },
+  "cards-routing-fundamentals-path-control.enc": {
+   "v": "340e5bdaa1",
+   "size": 11793
+  },
+  "cards-vrf-gre-ipsec-tunnels.enc": {
+   "v": "f6b11307b4",
+   "size": 12712
+  },
+  "images-01.enc": {
+   "v": "944c1dd26e",
+   "size": 967350
+  },
+  "images-02.enc": {
+   "v": "d4c3f78ef9",
+   "size": 980507
+  },
+  "images-03.enc": {
+   "v": "1a19519f93",
+   "size": 973625
+  },
+  "images-04.enc": {
+   "v": "aca5ebed46",
+   "size": 979001
+  },
+  "images-05.enc": {
+   "v": "19d2aee8a5",
+   "size": 741229
+  },
+  "images-06.enc": {
+   "v": "d434e8a398",
+   "size": 972295
+  },
+  "images-07.enc": {
+   "v": "09c56acf41",
+   "size": 980163
+  },
+  "images-08.enc": {
+   "v": "e205db4904",
+   "size": 972820
+  },
+  "images-09.enc": {
+   "v": "cfdf5d508c",
+   "size": 970428
+  },
+  "images-10.enc": {
+   "v": "4e3c453ee7",
+   "size": 980539
+  },
+  "images-11.enc": {
+   "v": "78388f277b",
+   "size": 978334
+  },
+  "images-12.enc": {
+   "v": "8d3dfaf30e",
+   "size": 974904
+  },
+  "images-13.enc": {
+   "v": "ef3150545c",
+   "size": 868110
+  },
+  "meta.enc": {
+   "v": "f29bd6c422",
+   "size": 26647
+  },
+  "questions-automation-programmability.enc": {
+   "v": "b28512304a",
+   "size": 45673
+  },
+  "questions-bgp.enc": {
+   "v": "d44009926f",
+   "size": 8051
+  },
+  "questions-campus-design-high-availability.enc": {
+   "v": "b46c1c5bb4",
+   "size": 6418
+  },
+  "questions-cisco-sd-access.enc": {
+   "v": "9616716063",
+   "size": 9709
+  },
+  "questions-cisco-sd-wan.enc": {
+   "v": "fd5e188a69",
+   "size": 7878
+  },
+  "questions-cloud-vs-on-premises.enc": {
+   "v": "e2bd8f5579",
+   "size": 2947
+  },
+  "questions-eigrp.enc": {
+   "v": "8f5e4cda46",
+   "size": 1684
+  },
+  "questions-fhrp-hsrp-vrrp-glbp.enc": {
+   "v": "4fcc2e4955",
+   "size": 10654
+  },
+  "questions-hypervisors-virtual-machines.enc": {
+   "v": "6a2369d27c",
+   "size": 7383
+  },
+  "questions-infrastructure-security-acls-aaa-hardening.enc": {
+   "v": "07732e7ff5",
+   "size": 24800
+  },
+  "questions-ip-services-dhcp-nat-ntp-dns.enc": {
+   "v": "23f9d472da",
+   "size": 8994
+  },
+  "questions-layer-2-switching-vlan-stp-etherchannel.enc": {
+   "v": "661303dd15",
+   "size": 13115
+  },
+  "questions-lisp-vxlan.enc": {
+   "v": "d97137b71a",
+   "size": 6856
+  },
+  "questions-multicast-pim-rp.enc": {
+   "v": "2e923c7f36",
+   "size": 2974
+  },
+  "questions-network-access-security-802-1x-ise-wlan-security.enc": {
+   "v": "c4b86f5cc9",
+   "size": 9947
+  },
+  "questions-network-assurance-monitoring.enc": {
+   "v": "3b1e977cac",
+   "size": 16788
+  },
+  "questions-ospf.enc": {
+   "v": "fb3941314b",
+   "size": 9623
+  },
+  "questions-packet-forwarding-rib-fib-cef-tcam.enc": {
+   "v": "065d42e5df",
+   "size": 5143
+  },
+  "questions-qos.enc": {
+   "v": "71af8c9a83",
+   "size": 4713
+  },
+  "questions-routing-fundamentals-path-control.enc": {
+   "v": "b4e1ef36ac",
+   "size": 4160
+  },
+  "questions-vrf-gre-ipsec-tunnels.enc": {
+   "v": "eafe4c728d",
+   "size": 8589
+  },
+  "questions-wireless.enc": {
+   "v": "6c59650db5",
+   "size": 25755
+  }
+ }
+}
