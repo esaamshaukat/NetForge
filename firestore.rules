@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Put the UID of every person who may use the app between the brackets,
+    // separated by commas. Use straight quotes ' ' (not curly quotes).
+    function allowed() {
+      return request.auth != null
+        && request.auth.uid in ['GG18h291utSjjrjrVJdTVjVwuXf2'];
+    }
+
+    // Each person can read and write only their own progress.
+    match /users/{userId}/{document=**} {
+      allow read, write: if allowed() && request.auth.uid == userId;
+    }
+
+    // The data key: allowed people can read it, nobody can change it from the app.
+    match /config/{docId} {
+      allow read: if allowed();
+      allow write: if false;
+    }
+  }
+}

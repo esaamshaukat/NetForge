@@ -1,0 +1,10 @@
+# Private: never upload these
+secret.key
+source/
+*.key
+
+# Python / OS noise
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db

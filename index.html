@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ENCOR 350-401 Study</title>
+<meta name="theme-color" content="#f4f1ec">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ENCOR">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body data-screen="splash">
+
+<!-- 1. Shown while we check if you are already signed in -->
+<section id="splash" class="center"><div class="logo">E</div><p id="splashmsg">Loading...</p></section>
+
+<!-- 2. The ONLY thing a visitor sees before signing in -->
+<section id="login" class="center" hidden>
+  <form id="loginForm" class="loginbox" autocomplete="on">
+    <div class="logo">E</div>
+    <h1>ENCOR 350-401</h1>
+    <p class="mu">Private study app. Please sign in.</p>
+    <label>Email<input id="lemail" type="email" name="email" autocomplete="username" inputmode="email" required></label>
+    <label>Password<input id="lpass" type="password" name="password" autocomplete="current-password" required></label>
+    <label class="chk"><input type="checkbox" id="lshow"> Show password</label>
+    <button class="btn pri big" id="lbtn" type="submit">Sign in</button>
+    <button class="link" id="lforgot" type="button">Forgot password?</button>
+    <div id="lerr" class="lerr" role="alert"></div>
+    <div id="lok" class="lok" role="status"></div>
+  </form>
+</section>
+
+<!-- 3. The app (built only after sign-in) -->
+<div id="shell" hidden>
+  <header id="top"><div class="brand"><span class="logo sm">E</span><b>ENCOR</b><small>350-401</small></div><button id="chip" class="chip-sync" type="button"></button></header>
+  <div id="banner"></div><div id="toast" aria-live="polite"></div>
+  <main id="app"></main>
+  <nav id="nav" aria-label="Main"></nav>
+</div>
+<div id="ov"></div>
+<div class="topbar-busy"></div>
+<input type="file" id="pfile" accept=".json,application/json" hidden>
+<noscript><p style="padding:20px">This app needs JavaScript.</p></noscript>
+
+<script>
+  // If the app could not start (for example no internet on the very first visit), say so.
+  setTimeout(function () {
+    if (!window.__encorBooted) {
+      var m = document.getElementById('splashmsg');
+      if (m) m.innerHTML = 'The app could not start. Check your internet connection and reload the page.';
+    }
+  }, 12000);
+</script>
+<script type="module" src="js/app.js"
+  onerror="document.getElementById('splashmsg').textContent='The app could not load. Check your internet connection and reload.'"></script>
+</body>
+</html>
