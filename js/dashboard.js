@@ -42,6 +42,17 @@ export function renderHome() {
   return h;
 }
 
+function installHelp() {
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (standalone) return '<div class="note">This app is installed on this device.</div>';
+  if (App.installEvt) return '';
+  const ua = navigator.userAgent, ios = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const txt = ios ? 'On iPad or iPhone, open this page in <b>Safari</b>, tap the <b>Share</b> button, then <b>Add to Home Screen</b>.'
+    : /Android/.test(ua) ? 'On Android, open the browser menu (three dots) and tap <b>Install app</b> or <b>Add to Home screen</b>.'
+    : 'On a PC, use Chrome or Edge: click the <b>install icon</b> at the right end of the address bar, or open the menu and choose <b>Install ENCOR</b> (Edge: Apps, Install this site as an app).';
+  return '<div class="note"><b>Install on this device:</b> ' + txt + '</div>';
+}
+
 export function renderProgress() {
   const ts = topicStats(), T = totals(ts), hist = P.history();
   const lastE = [...hist].reverse().find(h => h.mode === 'exam');
@@ -63,7 +74,7 @@ export function renderProgress() {
 <div class="mu sm">Importing adds to what you have and keeps the newest result for each question, so nothing is lost. It also reads the file exported by the old single-file app.</div>
 <div class="btns"><button class="btn danger" data-act="preset">Reset my progress</button></div>
 ${resetAsk ? `<div class="note bad">This deletes all your saved results and test history on every device. Flashcard marks and flags are kept. <div class="btns"><button class="btn danger" data-act="presetok">Yes, reset everything</button><button class="btn" data-act="presetno">Cancel</button></div></div>` : ''}</div>
-<div class="card"><h2>Account</h2><div class="mu">${esc(App.email || '')}</div><div class="btns"><button class="btn" data-act="signout">Sign out</button>${App.installEvt ? '<button class="btn pri" data-act="install">Install app on this device</button>' : ''}</div>
+<div class="card"><h2>Account</h2><div class="mu">${esc(App.email || '')}</div><div class="btns"><button class="btn" data-act="signout">Sign out</button>${App.installEvt ? '<button class="btn pri" data-act="install">Install app on this device</button>' : ''}</div>${installHelp()}
 <div class="mu sm" style="margin-top:10px">App version ${esc(App.build || '-')} · data version ${esc(D.version || '-')} · ${D.meta ? D.meta.questionCount : 0} questions</div></div>`;
   return h;
 }
