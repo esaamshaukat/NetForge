@@ -7,7 +7,7 @@
 //  * writes are batched (every ~4 s, sessions every ~20 s) and sent when the tab is hidden
 //  * each document is stored as ONE JSON string field => tiny index, far below free-plan limits
 import { db, doc, runTransaction } from './auth.js';
-import { dayStart, dayNum } from './util.js';
+import { dayStart } from './util.js';
 
 const NAMES = ['stats', 'cards', 'flags', 'history', 'settings', 'sessions'];   // stats first (history uses its resetAt)
 const emptyDoc = n => ({ stats: { resetAt: 0, q: {} }, cards: {}, flags: {}, history: [], settings: { ts: 0 }, sessions: {} }[n]);
@@ -213,45 +213,9 @@ export function rec(id, m, ok, prev) {
 export const isFlag = id => !!(L.s.flags[id] && L.s.flags[id].f);
 export const flagCount = () => Object.values(L.s.flags).filter(x => x && x.f).length;
 export function setFlag(id, f) { L.s.flags[id] = { f: f ? 1 : 0, ts: Date.now() }; touch('flags'); }
-// ---- flashcards -------------------------------------------------------------------------
-// All flashcard progress lives in ONE compact document (sync/cards). Per card:
-//   s 'k'|'a' (got it / missed it), l 'g'|'m' last result, b boxes in a row correct, d due day number,
-//   r times reviewed, x starred, ts last change.   Two special keys: _topics (my study topics), _streak.
-const STEPS = [1, 3, 7, 14];                 // a correct card returns after 1, 3, 7, then 14 days
-export function cardInfo(id) {
-  id = String(id); const e = L.s.cards[id];
-  if (!e || id[0] === '_') return { seen: false, last: '', due: Infinity, box: 0, star: !!(e && e.x), s: '' };
-  const seen = !!(e.s || e.r), last = e.l || (e.s === 'a' ? 'm' : e.s === 'k' ? 'g' : '');
-  let due = e.d; if (due == null) due = seen ? dayNum(e.ts || 0) + (last === 'm' ? 1 : 3) : Infinity;   // progress from the old app
-  return { seen, last, due, box: e.b || 0, star: !!e.x, s: e.s || '' };
-}
-export const cardState = id => cardInfo(id).s;
-export function answerCard(id, got) {
-  id = String(id); const i = cardInfo(id), e = L.s.cards[id] || {}, today = dayNum();
-  const n = got ? i.box : 0, gap = got ? STEPS[Math.min(n, STEPS.length - 1)] : 1;
-  const ne = { s: got ? 'k' : 'a', l: got ? 'g' : 'm', b: got ? n + 1 : 0, d: today + gap, r: (e.r || 0) + 1, ts: Date.now() };
-  if (e.x) ne.x = 1;
-  L.s.cards[id] = ne; touch('cards'); return ne;
-}
-export const setCard = (id, s) => answerCard(id, s === 'k');
-export function toggleStar(id) {
-  id = String(id); const e = Object.assign({ s: '' }, L.s.cards[id]); if (e.x) delete e.x; else e.x = 1; e.ts = Date.now();
-  L.s.cards[id] = e; touch('cards'); return !!e.x;
-}
-export function clearCards(ids) { const ts = Date.now(); ids.forEach(id => { const e = L.s.cards[String(id)]; if (e) L.s.cards[String(id)] = e.x ? { s: '', ts, x: 1 } : { s: '', ts }; }); touch('cards'); }
-export const studyTopics = () => ((L.s.cards._topics || {}).v) || [];
-export function setStudyTopics(a) { L.s.cards._topics = { ts: Date.now(), v: a.slice() }; touch('cards'); }
-export function streakInfo() {
-  const s = L.s.cards._streak || { n: 0, last: -1, best: 0 }, t = dayNum();
-  return { n: (s.last === t || s.last === t - 1) ? s.n : 0, best: s.best || 0, doneToday: s.last === t };
-}
-export function bumpStreak() {
-  const s = Object.assign({ n: 0, last: -1, best: 0 }, L.s.cards._streak), t = dayNum();
-  if (s.last === t) return s.n;
-  s.n = s.last === t - 1 ? s.n + 1 : 1; s.last = t; s.best = Math.max(s.best || 0, s.n); s.ts = Date.now();
-  L.s.cards._streak = s; touch('cards'); return s.n;
-}
-export const cardsAnsweredToday = () => { const d = dayStart(); return Object.entries(L.s.cards).filter(([k, e]) => k[0] !== '_' && tsOf(e) >= d && e.r).length; };
+export const cardState = id => (L.s.cards[id] || {}).s || '';
+export function setCard(id, s) { L.s.cards[id] = { s, ts: Date.now() }; touch('cards'); }
+export function clearCards(ids) { const ts = Date.now(); ids.forEach(id => { if (L.s.cards[id]) L.s.cards[id] = { s: '', ts }; }); touch('cards'); }
 export function addHist(h) { L.s.history = mergeHist(L.s.history, [h], L.s.stats.resetAt || 0); touch('history'); }
 export function updateHist(h) { touch('history'); }
 export const history = () => L.s.history;
