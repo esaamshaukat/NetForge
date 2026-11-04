@@ -6,6 +6,7 @@ export const shuf = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--)
 export const same = (a, b) => a.length === b.length && a.every(x => b.includes(x));
 export const fmt = s => { s = Math.max(0, s | 0); const h = s / 3600 | 0, m = (s % 3600) / 60 | 0, x = s % 60, p = n => String(n).padStart(2, '0'); return (h ? h + ':' : '') + p(m) + ':' + p(x); };
 export const dayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); };
+export const dayNum = (t = Date.now()) => Math.floor((t - new Date(t).getTimezoneOffset() * 60000) / 86400000);   // local calendar day number
 export const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
 export const idCmp = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 export const sleep = ms => new Promise(r => setTimeout(r, ms));

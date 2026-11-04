@@ -122,7 +122,7 @@ App.go = async (view, o = {}) => {
   busy(true);
   try {
     if (view === 'study') await study.open(o.resume);
-    else if (view === 'cards') await fc.open();
+    else if (view === 'cards') await fc.open(o);
     else if (o.resume && TESTS[view]) await (await import('./test.js')).resume(view);
   } catch (e) { console.error(e); toast('Could not load this part: ' + (e.message || e) + (navigator.onLine ? '' : ' (you are offline and it was not opened before)')); busy(false); return; }
   busy(false); App.view = view; scrollTo(0, 0); render();

@@ -19,6 +19,7 @@ const P = {
   pause: '<path d="M8 5v14M16 5v14"/>', play: '<path d="M7 4l13 8-13 8z"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>', grid: '<rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><rect x="14" y="14" width="6" height="6"/>',
   stop: '<rect x="6" y="6" width="12" height="12" rx="1"/>', flagoff: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
+  star: '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 17l-5.2 2.7 1-5.9-4.3-4.1 5.9-.8z"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14-4L4 9"/><path d="M4 4v5h5"/><path d="M4 13a8 8 0 0 0 14 4l2-2"/><path d="M20 20v-5h-5"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>', again: '<path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/>'
 };

@@ -1,5 +1,5 @@
 // Home (today, continue, weak spots) and Progress (per-topic readiness, history, backup, settings).
-import { esc, fmt, pct, download } from './util.js';
+import { esc, fmt, pct, download, dayNum } from './util.js';
 import { D } from './data.js';
 import * as P from './sync.js';
 import { App, icon } from './ui.js';
@@ -26,6 +26,13 @@ function totals(ts) {
 }
 const ring = (p, label) => { const r = 54, c = 2 * Math.PI * r; return `<div class="ringw"><svg viewBox="0 0 130 130" class="ring"><circle cx="65" cy="65" r="${r}" class="rbg"/><circle cx="65" cy="65" r="${r}" class="rfg" stroke-dasharray="${(c * p / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 65 65)"/></svg><div class="rtxt"><b>${p}%</b><span>${label}</span></div></div>`; };
 
+function reviewInfo() {
+  const st = P.studyTopics().filter(t => D.cardTopics.some(x => x.t === t)), today = dayNum();
+  let due = 0;
+  D.cardTopics.filter(x => st.includes(x.t)).forEach(x => x.ids.forEach(id => { const i = P.cardInfo(id); if (i.last === 'm' || (i.seen && i.due <= today)) due++; }));
+  return { st, due, n: st.length <= 2 ? 20 : st.length === 3 ? 25 : 30, sk: P.streakInfo() };
+}
+
 export function renderHome() {
   const ts = topicStats(), T = totals(ts), goal = P.setting('goal', 20), today = P.answeredToday();
   const weak = ts.slice().sort((a, b) => (a.seen ? a.rd : -1) - (b.seen ? b.rd : -1) || a.t.localeCompare(b.t)).slice(0, 3);
@@ -34,7 +41,10 @@ export function renderHome() {
   if (es) cont.push(`<button class="contbtn" data-act="resumego" data-m="exam">${icon('exam')}<span><b>Resume exam</b><small>Question ${Math.min((es.i || 0) + 1, es.qs.length)} of ${es.qs.length}, paused</small></span>${icon('right')}</button>`);
   if (ps) cont.push(`<button class="contbtn" data-act="resumego" data-m="practice">${icon('practice')}<span><b>Resume practice test</b><small>Question ${Math.min((ps.i || 0) + 1, ps.qs.length)} of ${ps.qs.length}, paused</small></span>${icon('right')}</button>`);
   if (ss && ss.qid) cont.push(`<button class="contbtn" data-act="resumego" data-m="study">${icon('study')}<span><b>Continue studying</b><small>${esc(D.topicOf.get(ss.qid) || 'Study mode')} · question ${(ss.i || 0) + 1}</small></span>${icon('right')}</button>`);
+  const rv = reviewInfo(), fs = P.getSession('cards');
+  if (fs && fs.ids && fs.i < fs.ids.length) cont.push(`<button class="contbtn" data-act="resumego" data-m="cards">${icon('cards')}<span><b>Continue flashcards</b><small>Card ${fs.i + 1} of ${fs.ids.length}</small></span>${icon('right')}</button>`);
   let h = `<div class="card hero">${ring(pct(T.C, T.N), 'ready')}<div class="kpis"><div class="kpi"><b>${T.seen}<small>/${T.N}</small></b><span>attempted</span></div><div class="kpi"><b>${acc(T.all)}</b><span>accuracy</span></div><div class="kpi today"><b>${today}<small>/${goal}</small></b><span>answered today</span><i style="width:${Math.min(100, pct(today, goal))}%"></i></div></div></div>`;
+  h += `<div class="card"><div class="thead"><h2>Today's review</h2><span class="chip ${rv.sk.doneToday ? 'g' : 'n'}">Streak ${rv.sk.n} day${rv.sk.n === 1 ? '' : 's'}</span></div>` + (rv.st.length ? `<div class="mu">${rv.st.map(esc).join(', ')}<br>${rv.due} flashcard${rv.due === 1 ? '' : 's'} due or missed.</div><div class="btns"><button class="btn pri" data-act="quickrev">Start today's review (${rv.n} cards)</button></div>` : `<div class="mu">Choose the topics you are studying now and get a daily mix of 20 to 30 flashcards.</div><div class="btns"><button class="btn pri" data-act="dgo" data-m="cards">Choose my study topics</button></div>`) + '</div>';
   h += `<div class="card"><h2>Continue where you left off</h2>${cont.length ? cont.join('') : '<div class="mu">Nothing paused. Pick something below to start.</div>'}</div>`;
   h += `<div class="quick"><button class="qbtn" data-act="dgo" data-m="study">${icon('study')}Study</button><button class="qbtn" data-act="dgo" data-m="practice">${icon('practice')}Practice</button><button class="qbtn" data-act="dgo" data-m="exam">${icon('exam')}Exam</button><button class="qbtn" data-act="dgo" data-m="cards">${icon('cards')}Flashcards</button></div>`;
   h += `<div class="card"><div class="thead"><h2>Weakest topics</h2><button class="link" data-act="dgo" data-m="progress">All topics</button></div>` + weak.map(r => { const b = band(r); return `<div class="trow"><div class="thead"><b>${esc(r.t)}</b><span class="chip ${b[1]}">${b[0]} · ${Math.round(r.rd * 100)}%</span></div><div class="sb"><i class="c" style="width:${pct(r.c, r.n)}%"></i><i class="w" style="width:${pct(r.w, r.n)}%"></i></div></div>`; }).join('') +
@@ -80,6 +90,7 @@ ${resetAsk ? `<div class="note bad">This deletes all your saved results and test
 }
 
 export async function handle(a, b) {
+  if (a === 'quickrev') { await App.go('cards', { quick: true }); return true; }
   if (a === 'dgo') { await App.go(b.dataset.m); return true; }
   if (a === 'resumego') { const m = b.dataset.m; if (m === 'study') await App.go('study', { resume: true }); else await App.go(m, { resume: true }); return true; }
   if (a === 'dweak') { const rows = topicStats().sort((x, y) => (x.seen ? x.rd : -1) - (y.seen ? y.rd : -1)).slice(0, 3).map(r => r.t); startWeak(rows); await App.go('practice'); App.toast('Practice set up for your 3 weakest topics: ' + rows.join(', ') + '. Adjust anything, then press Start.'); return true; }
