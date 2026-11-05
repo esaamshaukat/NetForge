@@ -14,7 +14,7 @@ encor-app/
 │                         flashcards, dashboard, crypto + data loader, ...)
 ├── icons/                app icons
 ├── data/                 ENCRYPTED questions, flashcards, pictures (safe to upload)
-├── tools/                extract_from_index.py, build.py, stamp_version.py, make_icons.py
+├── tools/                extract_from_index.py, build.py, subtopics.json, stamp_version.py, make_icons.py
 ├── firestore.rules       the Firestore rules, ready to paste
 └── .gitignore            keeps secret.key and source/ out of GitHub
 ```
@@ -128,12 +128,28 @@ Changing the look of the app now means replacing a few small files, not a 21 MB 
   If it was somewhere else, open the old app, press **Export my progress**, then use **Import progress** here. Old export files are understood.
 * Paused practice tests and exams are saved to your account too, so you can resume on another device.
 
+## Topics, subtopics and search
+
+Everywhere you choose what to study (Study, Practice, Exam, Flashcards and "My study topics") the list now shows
+each topic with a small button such as **9 ▸**. Tap it to open the subtopics of that topic (for example Network Assurance &
+Monitoring: SNMP, Syslog & Logging, NetFlow, SPAN / RSPAN / ERSPAN, IP SLA, ...).
+
+* Tick a whole topic, or only the subtopics you want. You can mix them (all of OSPF plus the Syslog subtopic).
+* The **search box** at the top of the list finds topics and subtopics by name or by related words. Typing `syslog` jumps straight to
+  Syslog & Logging; there is no scrolling. Tick the result right in the search list.
+* The numbers next to each name are how many questions (or flashcards) it has.
+* Subtopics are worked out **when you run `build.py`**, from keywords in `tools/subtopics.json`. Your questions, options and
+  explanations are never changed, and the tags are stored separately in `data/subtopics.enc`.
+  A question or card can belong to up to three subtopics. Anything that matches no keyword goes to "General / other".
+* To improve the grouping: open `tools/subtopics.json`, add or change keywords or subtopics (the file explains the rules at the top),
+  run `python tools/build.py --report` to see how many items each subtopic gets, then `python tools/build.py` and upload `data/`.
+
 ## Flashcards (upgraded)
 
 * **Build a session:** tick one or many topics (chips, with Select all / Clear / My study topics), pick card types
   (New, Missed, Seen, Due, Starred, New in v1.2, All; you can combine them), how many cards (10 / 20 / 30 / 50 / All / your own number),
   and the order (shuffled or by topic). The screen shows how many cards match before you start.
-* **My study topics:** tick the topics you are working on now and change the list whenever you move on
+* **My study topics:** tick the topics (or just some subtopics) you are working on now and change the list whenever you move on
   (day 1 OSPF; day 2 OSPF + FHRP + Multicast).
 * **Today's review (one tap, also on Home):** uses your study topics. 20 cards for 1-2 topics, 25 for 3, 30 for 4 or more,
   split evenly across the topics, filled with Missed first, then Due, then Seen, then New.
