@@ -27,6 +27,7 @@ import base64
 import gzip
 import hashlib
 import hmac
+import html
 import json
 import os
 import re
@@ -40,6 +41,7 @@ except ImportError:
     sys.exit("Missing package. Run:  pip install cryptography")
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 SRC = ROOT / "source"
 DATA = ROOT / "data"
 KEYFILE = ROOT / "secret.key"
@@ -130,9 +132,67 @@ def pack_images(images, ordered_names, prefix):
     return out, index
 
 
+# ---------------------------------------------------------------- subtopics (tagging by keyword)
+STOP = set("""permit deny active standby port ports priority design cost list object array request response learning interface interfaces filter group groups default delay load hash key keys policy policies match set action event events template templates server servers client clients user users device devices role roles tag tags state states status mode modes version name type types example master backup member members stack node nodes site sites path paths network networks control data plane management service services process processes time timer timers number numbers address addresses table tables entry entries route routes routing packet packets frame frames traffic link links host hosts source destination switch switches router routers layer layers protocol protocols configuration config commands command show debug clear information application applications operation operations message messages field fields value values attribute attributes option options feature features function functions level levels single multiple dual standard open close free fast high low full half best better first second third last next previous current new old up down in out on off any all none yes no true false enable disable enabled disabled auto manual static dynamic global local public private internal external primary secondary passive inbound outbound input output ingress egress upstream downstream hello hold advertisement advertisements update updates reply replies query queries report reports join leave drop drops discard discards error errors failure failures fail success pass passes test tests check checks verify verification validate validation monitor monitoring monitors manage managed managing build built create created delete deleted add added remove removed change changes changed modify modified read write run runs running start started stop stopped restart reload reset resets send sent receive received transmit transmitted forward forwarded forwarding""".split())
+OTHER = "General / other"
+
+
+def strip_html(s):
+    return html.unescape(re.sub(r"<[^>]+>", " ", s or ""))
+
+
+def kw_ok(k):
+    if k.startswith("re:"):
+        return True
+    k = k.strip()
+    return len(k) >= 2 and not k.replace(".", "").replace("-", "").isdigit() and k.lower() not in STOP
+
+
+def kw_rx(k):
+    if k.startswith("re:"):
+        return re.compile(k[3:], re.I)
+    case_sensitive = k.isalpha() and k.isupper() and len(k) <= 6
+    return re.compile(r"(?<![A-Za-z0-9])" + re.escape(k) + r"(?:s|es)?(?![A-Za-z0-9])", 0 if case_sensitive else re.I)
+
+
+def tag_topic(defn, a, b, max_df=0.22):
+    """a/b: id -> text (main text / fallback text). Returns ({sub: [ids]}, [unmatched ids], {sub: [keywords used]})."""
+    subs, used = {}, {}
+    n = max(1, len(a))
+    for sub, kws in defn.items():
+        good, seen = [], set()
+        for k in kws:
+            if k.lower() in seen or not kw_ok(k):
+                continue
+            seen.add(k.lower())
+            rx = kw_rx(k)
+            if n >= 20 and sum(1 for t in a.values() if rx.search(t)) / n > max_df:
+                continue                                   # too common in this topic to be useful
+            good.append((k, rx))
+        subs[sub] = good
+        used[sub] = [k for k, _ in good]
+
+    def score(text):
+        return {sb: len({k for k, rx in g if rx.search(text)}) for sb, g in subs.items()}
+    out, other = {sb: [] for sb in subs}, []
+    for i, ta in a.items():
+        sc = score(ta)
+        if max(sc.values() or [0]) == 0:
+            sc = score(b.get(i, ""))
+        mx = max(sc.values() or [0])
+        if mx == 0:
+            other.append(i)
+            continue
+        for sb in [sb for sb, v in sorted(sc.items(), key=lambda x: -x[1]) if v >= max(1, (mx + 1) // 2)][:3]:
+            out[sb].append(i)
+    return out, other, used
+
+
 def main():
     ap = argparse.ArgumentParser(description="Encrypt the ENCOR question bank and flashcards.")
     ap.add_argument("--init-key", action="store_true", help="make a new random key in secret.key and print it")
+    ap.add_argument("--subtopic-report", action="store_true", help="print how items were tagged and which questions matched no subtopic")
+    ap.add_argument("--report", action="store_true", help="show how well the subtopic keywords match (nothing is written)")
     ap.add_argument("--force", action="store_true", help="with --init-key: replace an existing key")
     args = ap.parse_args()
     if args.init_key:
@@ -216,6 +276,40 @@ def main():
     cpacks, cindex = pack_images(cimages, list(cimages.keys()), "card-images")
     for fname, p in cpacks:
         put(fname, p)
+
+
+
+    # ---- subtopics: tag every question / flashcard (the questions themselves are NOT changed) ----
+    sub_path = ROOT / "tools" / "subtopics.json"
+    taxo = json.loads(sub_path.read_text(encoding="utf-8")) if sub_path.exists() else {}
+    sub_out, report = {}, []
+    for t in topics:
+        defn = taxo.get(t)
+        if not defn:
+            continue
+        qa = {q["id"]: q["question"] + " " + " ".join(str(v) for v in q["options"].values()) for q in by[t]}
+        qb = {q["id"]: q.get("explanation", "") for q in by[t]}
+        cl = cby.get(t, [])
+        ca = {c["id"]: strip_html(c["f"]) for c in cl}
+        cb = {c["id"]: strip_html(c["b"]) for c in cl}
+        qs_, qo, qk = tag_topic(defn, qa, qb)
+        cs_, co, ck = tag_topic(defn, ca, cb)
+        lst = []
+        for sb in defn:
+            if qs_[sb] or cs_[sb]:
+                lst.append({"name": sb, "q": qs_[sb], "c": cs_[sb], "kw": (qk[sb] if qk[sb] else ck[sb])[:40]})
+        if qo or co:
+            lst.append({"name": OTHER, "q": qo, "c": co, "kw": []})
+        sub_out[t] = lst
+        report.append((t, len(qa), len(qo), len(ca), len(co), lst))
+    if args.report:
+        print("Subtopic coverage (items with no subtopic go to '%s'):" % OTHER)
+        for t, nq, nqo, nc, nco, lst in report:
+            print("\n%s: %d questions (%d unmatched), %d cards (%d unmatched)" % (t, nq, nqo, nc, nco))
+            for e in lst:
+                print("    %-48s %4d q  %4d c" % (e["name"][:48], len(e["q"]), len(e["c"])))
+        return
+    put("subtopics.enc", {"schema": 1, "topics": sub_out})
 
     # ---- meta (topic list, picture index, ...) is encrypted too ----
     meta = {
