@@ -1,15 +1,15 @@
 // Flashcards: session builder (many topics, card types, size, order), quick "Today's review",
 // light spaced repetition, retry-missed, daily streak. Swipe right = Got it, left = Missed it.
 import { esc, shuf, dayNum } from './util.js';
-import { D, loadAllCards } from './data.js';
+import { D, loadAllCards, loadSubs, selIds, subsOf } from './data.js';
 import * as P from './sync.js';
-import { App, icon } from './ui.js';
+import { App, icon, topicPicker, topicAction } from './ui.js';
 
 const TYPES = [['new', 'New'], ['missed', 'Missed'], ['seen', 'Seen'], ['due', 'Due'], ['star', 'Starred'], ['v12', 'New in v1.2'], ['all', 'All']];
 const SIZES = [10, 20, 30, 50, 'all'];
 const STREAK_MIN = 10;   // answering this many cards in a day (or finishing Today's review) keeps the streak
 
-export const FC = { screen: 'build', sel: { topics: [], types: ['all'], count: 20, order: 'shuffle' }, editStudy: false, sess: null, show: false, anim: '', reset: false, msg: '', ready: false };
+export const FC = { screen: 'build', sel: { tp: [], sub: [], q: '', exp: [], tpOpen: false, types: ['all'], count: 20, order: 'shuffle' }, stt: { tp: [], sub: [], q: '', exp: [], tpOpen: true }, editStudy: false, sess: null, show: false, anim: '', reset: false, msg: '', ready: false };
 let all = [], byId = new Map();
 
 const FC_OK = new Set(['B', 'I', 'U', 'EM', 'STRONG', 'BR', 'DIV', 'SPAN', 'P', 'UL', 'OL', 'LI', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH', 'CODE', 'PRE', 'SUB', 'SUP', 'H1', 'H2', 'H3', 'H4', 'IMG']);
@@ -42,8 +42,9 @@ const cats = c => {
   const i = P.cardInfo(c.id), today = dayNum();
   return { new: !i.seen, missed: i.last === 'm', seen: i.seen, due: i.seen && i.due <= today, star: i.star, v12: !!(c.n && c.n !== '0'), all: true };
 };
-const topicList = () => FC.sel.topics.length ? FC.sel.topics : D.cardTopics.map(t => t.t);
-const inTopics = () => { const t = new Set(topicList()); return all.filter(c => t.has(c.t)); };
+const inTopics = () => { const s = selIds(FC.sel, 'c'); return s ? all.filter(c => s.has(String(c.id))) : all; };
+const pickerCfg = (pk, onChange, extra) => ({ pk, kind: 'c', get topics() { return D.cardTopics.map(t => ({ name: t.t, ids: t.ids })); }, count: ids => ids.length, onChange, extraChips: extra });
+const unitLabel = k => k.includes('||') ? k.split('||')[1] + ' (' + k.split('||')[0] + ')' : k;
 const matches = (c, types) => { const k = cats(c); return types.includes('all') || types.some(t => k[t]); };
 const byTopicOrder = ids => {
   const ix = new Map(all.map((c, j) => [String(c.id), j])), tx = new Map(D.cardTopics.map((t, j) => [t.t, j]));
@@ -54,16 +55,28 @@ function builderIds() {
   if (FC.sel.count !== 'all') l = l.slice(0, Math.max(1, +FC.sel.count || 20));
   return FC.sel.order === 'topic' ? byTopicOrder(l) : l;
 }
-// Quick review: 20 cards for 1-2 topics, 25 for 3, 30 for 4+, split evenly; fill Missed > Due > Seen > New.
+// Quick review: 20 cards for 1-2 study topics, 25 for 3, 30 for 4+, split evenly; fill Missed > Due > Seen > New.
+// A study "topic" can be a whole topic or a single subtopic.
 const quickSize = k => k <= 2 ? 20 : k === 3 ? 25 : 30;
-function quickIds(topics) {
-  const today = dayNum(), n = quickSize(topics.length);
+function studyUnits() {
+  const tp = P.studyTopics().filter(x => D.cardTopics.some(c => c.t === x));
+  const sub = P.studySubs().filter(k => !tp.includes(k.split('||')[0]));
+  return { tp, sub, k: tp.length + sub.length };
+}
+function unitCards(u) {
+  const out = [];
+  u.tp.forEach(t => out.push(all.filter(c => c.t === t)));
+  u.sub.forEach(k => { const s = selIds({ tp: [], sub: [k] }, 'c'); out.push(all.filter(c => s && s.has(String(c.id)))); });
+  return out;
+}
+function quickIds(u) {
+  const today = dayNum(), n = quickSize(u.k), pools = unitCards(u);
   const rank = c => { const i = P.cardInfo(c.id); return i.last === 'm' ? 0 : (i.seen && i.due <= today) ? 1 : i.seen ? 2 : 3; };
   const sorted = arr => arr.map(c => [rank(c), Math.random(), c]).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map(x => x[2]);
-  const per = Math.floor(n / topics.length), extra = n % topics.length, chosen = [], used = new Set();
-  topics.forEach((t, ix) => sorted(all.filter(c => c.t === t)).slice(0, per + (ix < extra ? 1 : 0)).forEach(c => { chosen.push(String(c.id)); used.add(String(c.id)); }));
+  const per = Math.floor(n / pools.length), extra = n % pools.length, chosen = [], used = new Set();
+  pools.forEach((pool, ix) => sorted(pool).filter(c => !used.has(String(c.id))).slice(0, per + (ix < extra ? 1 : 0)).forEach(c => { chosen.push(String(c.id)); used.add(String(c.id)); }));
   const left = n - chosen.length;
-  if (left > 0) sorted(all.filter(c => topics.includes(c.t) && !used.has(String(c.id)))).slice(0, left).forEach(c => chosen.push(String(c.id)));
+  if (left > 0) sorted([...new Map(pools.flat().map(c => [String(c.id), c])).values()].filter(c => !used.has(String(c.id)))).slice(0, left).forEach(c => chosen.push(String(c.id)));
   return shuf(chosen);
 }
 
@@ -74,8 +87,8 @@ function begin(ids, quick) {
   FC.sess = { ids, i: 0, got: [], missed: [], skipped: [], quick: !!quick }; FC.screen = 'session'; FC.show = false; FC.anim = ''; FC.msg = ''; saveSess(); scrollTo(0, 0);
 }
 function startQuick() {
-  const t = P.studyTopics().filter(x => D.cardTopics.some(c => c.t === x));
-  if (!t.length) { FC.screen = 'build'; FC.editStudy = true; FC.msg = "Pick the topics you are studying now (tick them below). Then Today's review can build your daily mix."; return; }
+  const t = studyUnits();
+  if (!t.k) { FC.screen = 'build'; FC.editStudy = true; FC.msg = "Pick the topics you are studying now (tick them below). Then Today's review can build your daily mix."; return; }
   begin(quickIds(t), true);
 }
 function finish() {
@@ -93,6 +106,8 @@ function answer(got) {
 
 export async function open(o = {}) {
   if (!D.cardTopics.length) { FC.ready = true; return; }
+  await loadSubs();
+  FC.stt.tp = P.studyTopics().slice(); FC.stt.sub = P.studySubs().slice();
   all = await loadAllCards(); byId = new Map(all.map(c => [String(c.id), c])); FC.ready = true;
   if (o.quick) startQuick();
   else if (o.resume) {
@@ -106,29 +121,28 @@ const tgl = (on, act, attrs, label, n) => `<button class="tgl ${on ? 'on' : ''}"
 
 function renderBuild() {
   const sel = FC.sel, today = dayNum(), sk = P.streakInfo();
-  const st = P.studyTopics().filter(x => D.cardTopics.some(c => c.t === x)), pool = inTopics();
+  const su = studyUnits(), pool = inTopics(), stNames = su.tp.concat(su.sub.map(unitLabel));
   const saved = P.getSession('cards');
   let due = 0, missed = 0;
-  all.filter(c => st.includes(c.t)).forEach(c => { const i = P.cardInfo(c.id); if (i.last === 'm') missed++; else if (i.seen && i.due <= today) due++; });
+  const seenU = new Set(); unitCards(su).flat().forEach(c => { if (seenU.has(String(c.id))) return; seenU.add(String(c.id)); const i = P.cardInfo(c.id); if (i.last === 'm') missed++; else if (i.seen && i.due <= today) due++; });
   let h = '';
   if (FC.msg) h += `<div class="note">${esc(FC.msg)}</div>`;
   h += `<div class="card"><div class="thead"><h2>Today's review</h2><span class="chip ${sk.doneToday ? 'g' : 'n'}">Streak ${sk.n} day${sk.n === 1 ? '' : 's'}${sk.best > sk.n ? ' · best ' + sk.best : ''}</span></div>`;
-  h += st.length ? `<div class="mu">Your study topics: ${st.map(esc).join(', ')}.<br>${missed + due} card${missed + due === 1 ? '' : 's'} due or missed. Mix: ${quickSize(st.length)} cards, split evenly, Missed first, then Due, Seen, New.</div><div class="btns"><button class="btn pri big" data-act="fcquick">Start today's review (${quickSize(st.length)})</button></div>`
+  h += su.k ? `<div class="mu">Your study topics: ${stNames.map(esc).join(', ')}.<br>${missed + due} card${missed + due === 1 ? '' : 's'} due or missed. Mix: ${quickSize(su.k)} cards, split evenly, Missed first, then Due, Seen, New.</div><div class="btns"><button class="btn pri big" data-act="fcquick">Start today's review (${quickSize(su.k)})</button></div>`
     : '<div class="mu">Mark the topics you are studying right now and get a daily mix of 20 to 30 cards with one tap.</div>';
   h += `<div class="mu sm" style="margin-top:8px">A day counts for the streak when you answer ${STREAK_MIN} cards or finish Today's review.</div></div>`;
 
   h += `<div class="card"><div class="thead"><h3>My study topics</h3><button class="link" data-act="fcedit">${FC.editStudy ? 'Done' : 'Edit'}</button></div>`;
-  if (FC.editStudy) h += `<div class="mu sm">Tick what you are studying now. Change it whenever you move on (for example day 1: OSPF, day 2: OSPF + FHRP + Multicast).</div><div class="tplist">${D.cardTopics.map(x => `<label class="tp"><input type="checkbox" data-act="stt" data-t="${esc(x.t)}" ${st.includes(x.t) ? 'checked' : ''}><span><b>${esc(x.t)}</b> <i>${x.n}</i></span></label>`).join('')}</div>`;
-  else h += st.length ? `<div class="tgls">${st.map(t => `<span class="tgl on static">${esc(t)}</span>`).join('')}</div>` : '<div class="mu">None yet. Tap Edit.</div>';
+  if (FC.editStudy) h += `<div class="mu sm" style="margin-bottom:8px">Tick the topics, or just some subtopics, you are studying now. Change it whenever you move on (for example day 1: OSPF, day 2: OSPF + FHRP + Multicast).</div>` + topicPicker(Object.assign(FC.stt, { tpOpen: true }), pickerCfg('fcstudy', o => P.setStudyTopics(o.tp, o.sub)));
+  else h += stNames.length ? `<div class="tgls">${stNames.map(t => `<span class="tgl on static">${esc(t)}</span>`).join('')}</div>` : '<div class="mu">None yet. Tap Edit.</div>';
   h += '</div>';
 
   if (saved && saved.ids && saved.i < saved.ids.length) h += `<div class="card resume"><b>Unfinished flashcard session</b><div class="mu">Card ${saved.i + 1} of ${saved.ids.length}. Saved to your account.</div><div class="btns"><button class="btn pri" data-act="fcresume">Resume</button><button class="btn" data-act="fcdiscard">Discard</button></div></div>`;
 
   const preset = SIZES.includes(sel.count), ids = builderIds(), nMatch = pool.filter(c => matches(c, sel.types)).length;
   h += `<div class="card"><h2>Build a session</h2>
-<h4 class="sub">Topics <span class="mu sm">${sel.topics.length ? sel.topics.length + ' selected' : 'none ticked = all topics'}</span></h4>
-<div class="chiprow"><button class="chipbtn" data-act="fcall">Select all</button><button class="chipbtn" data-act="fcclr">Clear</button><button class="chipbtn" data-act="fcmine" ${st.length ? '' : 'disabled'}>My study topics</button></div>
-<div class="tgls">${D.cardTopics.map(x => tgl(sel.topics.includes(x.t), 'fctog', `data-t="${esc(x.t)}"`, x.t, x.n)).join('')}</div>
+<h4 class="sub">Topics and subtopics</h4>
+${topicPicker(sel, pickerCfg('fc', null, `<button class="chipbtn" data-act="fcmine" ${su.k ? '' : 'disabled'}>My study topics</button>`))}
 <h4 class="sub">Card types <span class="mu sm">combine as you like</span></h4>
 <div class="tgls">${TYPES.map(([k, l]) => tgl(sel.types.includes(k), 'fctype', `data-k="${k}"`, l, pool.filter(c => cats(c)[k]).length)).join('')}</div>
 <h4 class="sub">How many cards</h4>
@@ -139,9 +153,9 @@ function renderBuild() {
 <div class="btns"><button class="btn pri big" data-act="fcstart" ${ids.length ? '' : 'disabled'}>Start session</button></div></div>`;
 
   h += `<div class="card"><h3>Progress by topic</h3><div class="mu sm" style="margin-bottom:6px">Bar = cards you last answered Got it. Tap a topic to add or remove it in the builder.</div>` +
-    D.cardTopics.map(x => { let k = 0, d = 0; x.ids.forEach(id => { const i = P.cardInfo(id); if (i.last === 'g') k++; if (i.seen && i.due <= today) d++; }); return `<button class="fcrow ${sel.topics.includes(x.t) ? 'on' : ''}" data-act="fctog" data-t="${esc(x.t)}"><span>${esc(x.t)}</span><span class="fcbar"><i style="width:${x.n ? k / x.n * 100 : 0}%"></i></span><span>${k}/${x.n}${d ? ` · ${d} due` : ''}</span></button>`; }).join('') +
-    `<div class="btns"><button class="btn danger" data-act="fcreset">Reset flashcard progress${sel.topics.length ? ' for the ticked topics' : ''}</button></div>` +
-    (FC.reset ? `<div class="note bad">Clear Got it / Missed marks and due dates for ${sel.topics.length ? 'the ticked topics' : 'all flashcards'}? Stars are kept. Question progress is not affected.<div class="btns"><button class="btn danger" data-act="fcresetok">Yes, reset</button><button class="btn" data-act="fcresetno">Cancel</button></div></div>` : '') + '</div>';
+    D.cardTopics.map(x => { let k = 0, d = 0; x.ids.forEach(id => { const i = P.cardInfo(id); if (i.last === 'g') k++; if (i.seen && i.due <= today) d++; }); return `<button class="fcrow ${sel.tp.includes(x.t) ? 'on' : ''}" data-act="fctog" data-t="${esc(x.t)}"><span>${esc(x.t)}</span><span class="fcbar"><i style="width:${x.n ? k / x.n * 100 : 0}%"></i></span><span>${k}/${x.n}${d ? ` · ${d} due` : ''}</span></button>`; }).join('') +
+    `<div class="btns"><button class="btn danger" data-act="fcreset">Reset flashcard progress${selIds(sel, 'c') ? ' for the selected topics' : ''}</button></div>` +
+    (FC.reset ? `<div class="note bad">Clear Got it / Missed marks and due dates for ${selIds(sel, 'c') ? 'the selected topics' : 'all flashcards'}? Stars are kept. Question progress is not affected.<div class="btns"><button class="btn danger" data-act="fcresetok">Yes, reset</button><button class="btn" data-act="fcresetno">Cancel</button></div></div>` : '') + '</div>';
   return h;
 }
 
@@ -187,10 +201,9 @@ export async function handle(a, b) {
   if (a === 'fcstar') { const s = FC.sess; if (s) P.toggleStar(s.ids[s.i]); return true; }
   if (a === 'fcretry') { begin(shuf(FC.sess.missed.slice()), false); return true; }
   if (a === 'fcback') { FC.screen = 'build'; FC.sess = null; scrollTo(0, 0); return true; }
-  if (a === 'fctog') { const t = d.t; sel.topics = sel.topics.includes(t) ? sel.topics.filter(x => x !== t) : sel.topics.concat(t); return true; }
-  if (a === 'fcall') { sel.topics = D.cardTopics.map(x => x.t); return true; }
-  if (a === 'fcclr') { sel.topics = []; return true; }
-  if (a === 'fcmine') { sel.topics = P.studyTopics().filter(x => D.cardTopics.some(c => c.t === x)); return true; }
+  if (topicAction(a, b)) return true;
+  if (a === 'fctog') { const t = d.t; sel.tp = sel.tp.includes(t) ? sel.tp.filter(x => x !== t) : sel.tp.concat(t); sel.sub = sel.sub.filter(k => !k.startsWith(t + '||')); return true; }
+  if (a === 'fcmine') { const u = studyUnits(); sel.tp = u.tp.slice(); sel.sub = u.sub.slice(); return true; }
   if (a === 'fctype') {
     const k = d.k;
     if (k === 'all') sel.types = ['all'];
@@ -200,10 +213,9 @@ export async function handle(a, b) {
   if (a === 'fccount') { sel.count = d.n === 'all' ? 'all' : +d.n; return true; }
   if (a === 'fcorder') { sel.order = d.o; return true; }
   if (a === 'fcedit') { FC.editStudy = !FC.editStudy; FC.msg = ''; return true; }
-  if (a === 'stt') { const t = d.t, cur = P.studyTopics(); P.setStudyTopics(cur.includes(t) ? cur.filter(x => x !== t) : cur.concat(t)); return true; }
   if (a === 'fcreset') { FC.reset = true; return true; }
   if (a === 'fcresetno') { FC.reset = false; return true; }
-  if (a === 'fcresetok') { const ts = new Set(topicList()); P.clearCards(D.cardTopics.filter(t => ts.has(t.t)).flatMap(t => t.ids)); FC.reset = false; return true; }
+  if (a === 'fcresetok') { const ss = selIds(sel, 'c'); P.clearCards(D.cardTopics.flatMap(t => t.ids).filter(id => !ss || ss.has(String(id)))); FC.reset = false; return true; }
   return false;
 }
 export function change(id, v) {

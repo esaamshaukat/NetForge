@@ -1,27 +1,27 @@
 // Practice test and Exam share this engine (mode = 'practice' | 'exam').
 import { esc, same, shuf, fmt } from './util.js';
-import { D, ensureForIds, getQ } from './data.js';
+import { D, ensureForIds, getQ, loadSubs, selIds, info } from './data.js';
 import * as P from './sync.js';
 import { App, icon, actionBar, qBody, opts, explHtml, result, topicPicker, topicAction } from './ui.js';
 
 const REAL_MIN = 120, REAL_LO = 85, REAL_HI = 110, REAL_AVG = (REAL_LO + REAL_HI) / 2;
 const calcMins = n => Math.max(1, Math.ceil(n * REAL_MIN / REAL_AVG));
-const mk = m => ({ mode: m, phase: 'setup', n: 20, tp: [], tpOpen: false, labs: false, timed: true, mins: 0, edited: false, focus: 'mix', qs: [], ans: {}, flag: {}, chk: {}, self: {}, show: {}, i: 0, warn: false, quit: false, paused: false, used: 0, left: 0, limit: 0, last: 0, onlyWrong: false, onlyFlag: false, hist: null, timeUp: false, pal: false });
+const mk = m => ({ mode: m, phase: 'setup', n: 20, tp: [], sub: [], q: '', exp: [], tpOpen: false, labs: false, timed: true, mins: 0, edited: false, focus: 'mix', qs: [], ans: {}, flag: {}, chk: {}, self: {}, show: {}, i: 0, warn: false, quit: false, paused: false, used: 0, left: 0, limit: 0, last: 0, onlyWrong: false, onlyFlag: false, hist: null, timeUp: false, pal: false });
 export const T = { practice: mk('practice'), exam: mk('exam') };
 export const running = () => ['practice', 'exam'].find(m => T[m].phase === 'run');
 
 // ---- pool (ids only; questions are loaded when a test starts) ----
 function poolIds(t, topics = true) {
   let ids = [];
+  const sel = topics ? selIds(t, 'q') : null;
   D.topics.forEach(tp => {
-    if (topics && t.tp.length && !t.tp.includes(tp.name)) return;
     const skip = new Set(tp.noKey), labs = new Set(tp.labs);
-    tp.ids.forEach(id => { if (skip.has(id)) return; if (labs.has(id) && !t.labs) return; ids.push(id); });
+    tp.ids.forEach(id => { if (sel && !sel.has(String(id))) return; if (skip.has(id)) return; if (labs.has(id) && !t.labs) return; ids.push(id); });
   });
   if (t.focus === 'flag') ids = ids.filter(id => P.isFlag(id));
   return ids;
 }
-const countFor = t => poolIds({ tp: [], labs: true, focus: 'mix' }, false).filter(id => D.topicOf.get(id) === t).length;
+const pickerCfg = (t, pk) => ({ pk, kind: 'q', get topics() { return D.topics.map(x => ({ name: x.name, ids: x.ids })); }, info, count: ids => ids.filter(id => !D.noKey.has(id) && (t.labs || !D.labs.has(id))).length });
 const prio = id => { const s = P.getStat(id); return !s ? 1 : s.last === 'w' ? 0 : 2; };
 function draw(ids, n, focus) {
   const by = {};
@@ -61,7 +61,7 @@ function renderSetup(t) {
   const sv = savedSession(t.mode);
   let h = '';
   if (sv) h += `<div class="card resume"><b>You have a paused ${ex ? 'exam' : 'practice test'}</b><div class="mu">Question ${Math.min((sv.i || 0) + 1, sv.qs.length)} of ${sv.qs.length}. It was saved on your account, so you can carry on from any device.</div><div class="btns"><button class="btn pri" data-act="resume">Resume</button><button class="btn" data-act="discard">Discard it</button></div></div>`;
-  h += topicPicker(t, name => poolIds({ tp: [], labs: t.labs, focus: 'mix' }, false).filter(id => D.topicOf.get(id) === name).length);
+  h += topicPicker(t, pickerCfg(t, t.mode));
   h += `<div class="card"><h2>${ex ? 'Exam' : 'Practice test'}</h2>
 <p class="mu" style="margin-top:0">${ex ? 'Answers and explanations appear only after you submit.' : 'Like the exam, but you can <b>check each answer</b> and read the explanation straight away.'}</p>
 <div class="row"><label class="fld">How many questions <input type="number" id="n" min="1" max="${Math.max(1, pool.length)}" value="${n}" inputmode="numeric"></label></div>
@@ -154,7 +154,8 @@ export function pauseNow() { const m = running(); if (m && !T[m].paused) { T[m].
 
 export async function handle(m, a, b) {
   const t = T[m];
-  if (topicAction(a, b, t, D.topics.map(x => x.name))) return true;
+  const ta = topicAction(a, b);
+  if (ta) return true;
   if (a === 'start') { await start(t); scrollTo(0, 0); return true; }
   if (a === 'resume') { await resume(m); scrollTo(0, 0); return true; }
   if (a === 'discard') { P.setSession(m, null, true); return true; }
@@ -205,4 +206,4 @@ export function key(m, e) {
   if (q.type === 'mcq' && /^[a-h]$/.test(k) && q.options[k.toUpperCase()] !== undefined) return handle(m, 'pick', { dataset: { k: k.toUpperCase() } });
   return false;
 }
-export function startWeak(topics) { const t = T.practice; t.tp = topics; t.focus = 'weak'; t.phase = 'setup'; }
+export function startWeak(topics) { const t = T.practice; t.tp = topics; t.sub = []; t.focus = 'weak'; t.phase = 'setup'; }

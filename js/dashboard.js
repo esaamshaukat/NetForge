@@ -1,6 +1,6 @@
 // Home (today, continue, weak spots) and Progress (per-topic readiness, history, backup, settings).
 import { esc, fmt, pct, download, dayNum } from './util.js';
-import { D } from './data.js';
+import { D, selIds } from './data.js';
 import * as P from './sync.js';
 import { App, icon } from './ui.js';
 import { startWeak, savedSession } from './test.js';
@@ -27,10 +27,11 @@ function totals(ts) {
 const ring = (p, label) => { const r = 54, c = 2 * Math.PI * r; return `<div class="ringw"><svg viewBox="0 0 130 130" class="ring"><circle cx="65" cy="65" r="${r}" class="rbg"/><circle cx="65" cy="65" r="${r}" class="rfg" stroke-dasharray="${(c * p / 100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 65 65)"/></svg><div class="rtxt"><b>${p}%</b><span>${label}</span></div></div>`; };
 
 function reviewInfo() {
-  const st = P.studyTopics().filter(t => D.cardTopics.some(x => x.t === t)), today = dayNum();
+  const tp = P.studyTopics().filter(t => D.cardTopics.some(x => x.t === t)), sub = P.studySubs().filter(k => !tp.includes(k.split('||')[0])), today = dayNum();
+  const ids = selIds({ tp, sub }, 'c'), k = tp.length + sub.length;
   let due = 0;
-  D.cardTopics.filter(x => st.includes(x.t)).forEach(x => x.ids.forEach(id => { const i = P.cardInfo(id); if (i.last === 'm' || (i.seen && i.due <= today)) due++; }));
-  return { st, due, n: st.length <= 2 ? 20 : st.length === 3 ? 25 : 30, sk: P.streakInfo() };
+  if (ids) ids.forEach(id => { const i = P.cardInfo(id); if (i.last === 'm' || (i.seen && i.due <= today)) due++; });
+  return { st: tp.concat(sub.map(x => x.split('||')[1] + ' (' + x.split('||')[0] + ')')), due, n: k <= 2 ? 20 : k === 3 ? 25 : 30, sk: P.streakInfo() };
 }
 
 export function renderHome() {

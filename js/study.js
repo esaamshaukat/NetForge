@@ -1,16 +1,17 @@
 // Study mode: go through questions by topic, Check, then read the explanation.
 import { esc, same, shuf, idCmp } from './util.js';
-import { D, ensure, getQ } from './data.js';
+import { D, ensure, getQ, loadSubs, selIds, info } from './data.js';
 import * as P from './sync.js';
 import { App, icon, actionBar, qBody, opts, explHtml, result, noKeyNote, topicPicker, topicAction } from './ui.js';
 
-export const S = { tp: [], tpOpen: false, shuffle: false, filter: 'all', ids: [], i: 0, sel: [], checked: false, expl: false, graded: '' };
+export const S = { tp: [], sub: [], q: '', exp: [], tpOpen: false, shuffle: false, filter: 'all', ids: [], i: 0, sel: [], checked: false, expl: false, graded: '' };
 
-const countFor = t => (D.topics.find(x => x.name === t) || { ids: [] }).ids.length;
+const cfg = { pk: 'study', kind: 'q', get topics() { return D.topics.map(t => ({ name: t.name, ids: t.ids })); }, count: ids => ids.length, info };
 
 export function buildList(keepId) {
   let ids = [];
-  D.topics.forEach(t => { if (!S.tp.length || S.tp.includes(t.name)) ids = ids.concat(t.ids); });
+  const sel = selIds(S, 'q');
+  D.topics.forEach(t => t.ids.forEach(id => { if (!sel || sel.has(String(id))) ids.push(id); }));
   if (S.filter === 'new') ids = ids.filter(id => !P.getStat(id));
   else if (S.filter === 'wrong') ids = ids.filter(id => (P.getStat(id) || {}).last === 'w');
   else if (S.filter === 'flagged') ids = ids.filter(id => P.isFlag(id));
@@ -19,20 +20,21 @@ export function buildList(keepId) {
   const at = keepId ? S.ids.indexOf(keepId) : -1;
   S.i = at >= 0 ? at : 0; S.sel = []; S.checked = false; S.expl = false; S.graded = '';
 }
-const save = () => P.setSession('study', { tp: S.tp, filter: S.filter, shuffle: S.shuffle, i: S.i, qid: S.ids[S.i] || '', ids: S.shuffle ? S.ids : null });
+const save = () => P.setSession('study', { tp: S.tp, sub: S.sub, filter: S.filter, shuffle: S.shuffle, i: S.i, qid: S.ids[S.i] || '', ids: S.shuffle ? S.ids : null });
 
 export async function open(resume) {
+  await loadSubs();
   if (resume) {
     const s = P.getSession('study');
-    if (s) { S.tp = s.tp || []; S.filter = s.filter || 'all'; S.shuffle = !!s.shuffle; await ensure(S.tp); buildList(s.qid); if (s.shuffle && s.ids) { S.ids = s.ids; S.i = Math.max(0, S.ids.indexOf(s.qid)); } return; }
+    if (s) { S.tp = s.tp || []; S.sub = s.sub || []; S.filter = s.filter || 'all'; S.shuffle = !!s.shuffle; await ensure(); buildList(s.qid); if (s.shuffle && s.ids) { S.ids = s.ids; S.i = Math.max(0, S.ids.indexOf(s.qid)); } return; }
   }
-  await ensure(S.tp);
+  await ensure();   // all question text is only about 240 KB, so topic changes later need no extra download
   if (!S.ids.length) buildList();
 }
 
 export function render() {
   const q = getQ(S.ids[S.i]);
-  let h = topicPicker(S, countFor) + `<div class="bar"><label class="fld">Show <select id="sfilter"><option value="all" ${S.filter === 'all' ? 'selected' : ''}>All questions</option><option value="new" ${S.filter === 'new' ? 'selected' : ''}>Not attempted yet</option><option value="wrong" ${S.filter === 'wrong' ? 'selected' : ''}>Last answered wrong</option><option value="flagged" ${S.filter === 'flagged' ? 'selected' : ''}>My flagged (${P.flagCount()})</option></select></label>
+  let h = topicPicker(S, cfg) + `<div class="bar"><label class="fld">Show <select id="sfilter"><option value="all" ${S.filter === 'all' ? 'selected' : ''}>All questions</option><option value="new" ${S.filter === 'new' ? 'selected' : ''}>Not attempted yet</option><option value="wrong" ${S.filter === 'wrong' ? 'selected' : ''}>Last answered wrong</option><option value="flagged" ${S.filter === 'flagged' ? 'selected' : ''}>My flagged (${P.flagCount()})</option></select></label>
 <label class="chk"><input type="checkbox" id="shuf" ${S.shuffle ? 'checked' : ''}> Shuffle</label></div>`;
   if (!q) return h + '<div class="card empty">No questions match these choices.</div>';
   const fl = P.isFlag(q.id);
@@ -57,7 +59,8 @@ export function render() {
 
 export function handle(a, b) {
   const q = getQ(S.ids[S.i]);
-  if (topicAction(a, b, S, D.topics.map(t => t.name))) { if (a !== 'tpopen') { buildList(); save(); } return true; }
+  const ta = topicAction(a, b);
+  if (ta) { if (ta.changed) { buildList(); save(); } return true; }
   if (a === 'pick' && q) { if (S.checked) return true; const k = b.dataset.k; S.sel = q.correctAnswer.length > 1 ? (S.sel.includes(k) ? S.sel.filter(x => x !== k) : S.sel.concat(k)) : [k]; return true; }
   if (a === 'check' && q) { if (S.checked || !S.sel.length) return true; S.checked = true; if (!q.noKey) P.rec(q.id, 's', same(S.sel, q.correctAnswer)); return true; }
   if (a === 'expl') { S.expl = !S.expl; return true; }

@@ -240,7 +240,8 @@ export function toggleStar(id) {
 }
 export function clearCards(ids) { const ts = Date.now(); ids.forEach(id => { const e = L.s.cards[String(id)]; if (e) L.s.cards[String(id)] = e.x ? { s: '', ts, x: 1 } : { s: '', ts }; }); touch('cards'); }
 export const studyTopics = () => ((L.s.cards._topics || {}).v) || [];
-export function setStudyTopics(a) { L.s.cards._topics = { ts: Date.now(), v: a.slice() }; touch('cards'); }
+export const studySubs = () => ((L.s.cards._topics || {}).s) || [];     // single subtopics, as "topic||subtopic"
+export function setStudyTopics(a, subs) { L.s.cards._topics = { ts: Date.now(), v: a.slice(), s: (subs || []).slice() }; touch('cards'); }
 export function streakInfo() {
   const s = L.s.cards._streak || { n: 0, last: -1, best: 0 }, t = dayNum();
   return { n: (s.last === t || s.last === t - 1) ? s.n : 0, best: s.best || 0, doneToday: s.last === t };

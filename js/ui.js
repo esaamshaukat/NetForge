@@ -1,6 +1,6 @@
 // Shared UI pieces: icons, question rendering, topic picker, action bar.
 import { esc } from './util.js';
-import { D, imgTag, info } from './data.js';
+import { D, imgTag, info, subsOf, selIds } from './data.js';
 
 // App is a tiny shared object so modules can ask the shell to re-render / navigate.
 export const App = { view: 'home', render() {}, go() {}, toast() {}, busy() {}, confirm() {} };
@@ -61,22 +61,103 @@ export function explHtml(q) {
 export const result = (ok, q) => `<div class="res ${ok ? 'ok' : 'no'}">${ok ? 'Correct' : 'Incorrect. Correct answer: ' + q.correctAnswer.join(', ')}</div>`;
 export const noKeyNote = '<div class="res">No answer key: the source PDF does not give a clear correct answer for this question. Compare your choice with the explanation.</div>';
 
-// ---------- topic picker (collapsible list of topics with counts) ----------
-// o = {tp:[], tpOpen:bool}; count(topicName) = number of questions available in that topic
-export function topicPicker(o, count) {
-  const ts = D.topics.map(t => t.name).filter(t => count(t) > 0);
-  const n = o.tp.length ? o.tp.reduce((a, t) => a + count(t), 0) : ts.reduce((a, t) => a + count(t), 0);
-  const lbl = o.tp.length ? o.tp.length + ' topic' + (o.tp.length > 1 ? 's' : '') + ' selected' : 'All topics';
-  let h = `<div class="card tpbox"><button class="tpbtn" data-act="tpopen" aria-expanded="${!!o.tpOpen}"><span><b>${lbl}</b> <span class="mu">· ${n} question${n === 1 ? '' : 's'}</span></span><span class="link">${o.tpOpen ? 'Hide list' : 'Choose topics'}</span></button>`;
-  if (o.tpOpen) h += `<div class="chiprow"><button class="chipbtn" data-act="tpall">Select all</button><button class="chipbtn" data-act="tpclr">Clear (use all)</button></div><div class="tplist">` +
-    ts.map(t => `<label class="tp"><input type="checkbox" data-act="tp" data-t="${esc(t)}" ${o.tp.includes(t) ? 'checked' : ''}><span><b>${esc(t)}</b> <i>${count(t)}</i>${info(t) ? `<small>${esc(info(t))}</small>` : ''}</span></label>`).join('') + '</div>';
+// ---------- topic picker: topics with expandable subtopics, tick boxes and a search box ----------
+// o   = selection state {tp:[topic names], sub:["topic||subtopic"], tpOpen, q, exp:[topics shown expanded]}
+// cfg = {pk (unique id of this picker), kind:'q'|'c', topics:[{name, ids}], count(ids)->number, info(name), onChange(o)}
+const reg = new Map();
+const keyOf = (t, s) => t + '||' + s;
+const subIds = (e, kind) => (kind === 'c' ? e.c : e.q) || [];
+const norm = x => String(x || '').toLowerCase();
+
+function counts(cfg) {
+  const m = {};
+  cfg.topics.forEach(t => { m[t.name] = cfg.count(t.ids); });
+  return m;
+}
+function rowTopic(o, cfg, t, n, withExp) {
+  const subs = subsOf(t.name).filter(e => cfg.count(subIds(e, cfg.kind)) > 0), whole = o.tp.includes(t.name);
+  const some = !whole && subs.some(e => o.sub.includes(keyOf(t.name, e.name)));
+  const open = o.exp.includes(t.name);
+  let h = `<div class="tprow"><label class="tp"><input type="checkbox" data-act="tp" data-pk="${cfg.pk}" data-t="${esc(t.name)}" ${whole ? 'checked' : ''} ${some ? 'data-ind="1"' : ''}><span><b>${esc(t.name)}</b> <i>${n}</i>${cfg.info && cfg.info(t.name) ? `<small>${esc(cfg.info(t.name))}</small>` : ''}</span></label>` +
+    (withExp && subs.length ? `<button class="exp ${open ? 'on' : ''}" data-act="tpexp" data-pk="${cfg.pk}" data-t="${esc(t.name)}" aria-expanded="${open}" aria-label="${open ? 'Hide' : 'Show'} subtopics of ${esc(t.name)}">${subs.length} <span>${open ? '▾' : '▸'}</span></button>` : '') + '</div>';
+  if (withExp && open) h += '<div class="subs">' + subs.map(e => subRow(o, cfg, t.name, e, '')).join('') + '</div>';
+  return h;
+}
+function subRow(o, cfg, tn, e, hint) {
+  const on = o.tp.includes(tn) || o.sub.includes(keyOf(tn, e.name));
+  return `<label class="tp sub"><input type="checkbox" data-act="sb" data-pk="${cfg.pk}" data-t="${esc(tn)}" data-s="${esc(e.name)}" ${on ? 'checked' : ''}><span>${esc(e.name)} <i>${cfg.count(subIds(e, cfg.kind))}</i>${hint ? `<small>${hint}</small>` : ''}</span></label>`;
+}
+function search(o, cfg) {
+  const toks = norm(o.q).split(/\s+/).filter(Boolean), res = [];
+  const hit = (name, kws) => { const nm = norm(name), kw = kws.map(norm); let byName = true; for (const t of toks) { if (!nm.includes(t)) { byName = false; if (!kw.some(k => k.includes(t))) return null; } } return byName ? 2 : 1; };
+  cfg.topics.forEach(t => {
+    const n = cfg.count(t.ids); if (!n) return;
+    const sc = hit(t.name, []); if (sc) res.push({ sc: sc + 1, h: rowTopic(o, cfg, t, n, false) });
+    subsOf(t.name).forEach(e => {
+      const c = cfg.count(subIds(e, cfg.kind)); if (!c) return;
+      const sc2 = hit(t.name + ' ' + e.name, e.kw || []);
+      if (!sc2) return;
+      const nameHit = toks.every(k => norm(e.name).includes(k));
+      const via = nameHit ? '' : 'matches: ' + esc((e.kw || []).filter(k => toks.some(x => norm(k).includes(x))).slice(0, 3).join(', '));
+      res.push({ sc: nameHit ? 3 : 1, h: subRow(o, cfg, t.name, e, `in ${esc(t.name)}${via ? ' · ' + via : ''}`) });
+    });
+  });
+  res.sort((a, b) => b.sc - a.sc);
+  if (!res.length) return `<div class="mu" style="padding:10px 2px">Nothing matches "${esc(o.q)}". Try a shorter word, for example "syslog" or "ospf".</div>`;
+  return `<div class="mu sm" style="margin:6px 0">${res.length} result${res.length === 1 ? '' : 's'}${res.length > 40 ? ' (showing 40)' : ''}</div>` + res.slice(0, 40).map(r => r.h).join('');
+}
+function listHtml(o, cfg) {
+  if (norm(o.q).trim()) return search(o, cfg);
+  const c = counts(cfg);
+  return cfg.topics.filter(t => c[t.name] > 0).map(t => rowTopic(o, cfg, t, c[t.name], true)).join('');
+}
+function summary(o, cfg) {
+  const ids = cfg.kind === 'c' ? selIds(o, 'c') : selIds(o, 'q');
+  const n = ids ? cfg.count([...ids]) : cfg.topics.reduce((a, t) => a + cfg.count(t.ids), 0);
+  const parts = [];
+  if (o.tp.length) parts.push(o.tp.length + ' topic' + (o.tp.length > 1 ? 's' : ''));
+  if (o.sub.length) parts.push(o.sub.length + ' subtopic' + (o.sub.length > 1 ? 's' : ''));
+  return { lbl: parts.length ? parts.join(' + ') + ' selected' : 'All topics', n };
+}
+export function topicPicker(o, cfg) {
+  o.tp = o.tp || []; o.sub = o.sub || []; o.exp = o.exp || []; o.q = o.q || '';
+  reg.set(cfg.pk, { o, cfg });
+  const sm = summary(o, cfg);
+  let h = `<div class="card tpbox"><button class="tpbtn" data-act="tpopen" data-pk="${cfg.pk}" aria-expanded="${!!o.tpOpen}"><span><b>${sm.lbl}</b> <span class="mu">· ${sm.n} ${cfg.kind === 'c' ? 'card' : 'question'}${sm.n === 1 ? '' : 's'}</span></span><span class="link">${o.tpOpen ? 'Hide list' : 'Choose topics'}</span></button>`;
+  if (o.tpOpen) h += `<div class="tpsearch"><input type="search" class="tpq" data-pk="${cfg.pk}" placeholder="Search topics and subtopics, e.g. syslog" value="${esc(o.q)}" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search topics and subtopics"></div>
+<div class="chiprow"><button class="chipbtn" data-act="tpall" data-pk="${cfg.pk}">Select all topics</button><button class="chipbtn" data-act="tpclr" data-pk="${cfg.pk}">Clear (use all)</button>${cfg.extraChips || ''}</div>
+<div class="tplistbox" id="tplist-${cfg.pk}">${listHtml(o, cfg)}</div>`;
   return h + '</div>';
 }
-// returns true if it handled the action
-export function topicAction(a, b, o, allTopics) {
-  if (a === 'tp') { const x = b.dataset.t; o.tp = o.tp.includes(x) ? o.tp.filter(y => y !== x) : o.tp.concat(x); return true; }
-  if (a === 'tpall') { o.tp = allTopics.slice(); return true; }
-  if (a === 'tpclr') { o.tp = []; return true; }
-  if (a === 'tpopen') { o.tpOpen = !o.tpOpen; return true; }
-  return false;
+// live search without re-drawing the whole page (keeps the cursor in the box)
+export function pickerSearch(pk, value) {
+  const r = reg.get(pk); if (!r) return;
+  r.o.q = value;
+  const box = document.getElementById('tplist-' + pk); if (box) { box.innerHTML = listHtml(r.o, r.cfg); fixIndeterminate(box); }
+}
+export function fixIndeterminate(root) { root.querySelectorAll('input[data-ind]').forEach(x => { x.indeterminate = true; }); }
+
+// Handles the picker's buttons and tick boxes. Returns null if the action is not a picker action,
+// otherwise {pk, changed} (changed = the selection itself changed, so lists must be rebuilt).
+export function topicAction(a, b) {
+  if (!['tp', 'sb', 'tpall', 'tpclr', 'tpopen', 'tpexp'].includes(a)) return null;
+  const pk = b.dataset && b.dataset.pk, r = reg.get(pk); if (!r) return null;
+  const { o, cfg } = r, t = b.dataset.t, s = b.dataset.s;
+  let changed = false;
+  if (a === 'tpopen') o.tpOpen = !o.tpOpen;
+  else if (a === 'tpexp') o.exp = o.exp.includes(t) ? o.exp.filter(x => x !== t) : o.exp.concat(t);
+  else if (a === 'tpall') { o.tp = cfg.topics.map(x => x.name); o.sub = []; changed = true; }
+  else if (a === 'tpclr') { o.tp = []; o.sub = []; changed = true; }
+  else if (a === 'tp') {
+    if (o.tp.includes(t)) o.tp = o.tp.filter(x => x !== t); else o.tp = o.tp.concat(t);
+    o.sub = o.sub.filter(k => !k.startsWith(t + '||')); changed = true;
+  } else if (a === 'sb') {
+    const k = keyOf(t, s), all = subsOf(t).filter(e => cfg.count(subIds(e, cfg.kind)) > 0).map(e => keyOf(t, e.name));
+    if (o.tp.includes(t)) { o.tp = o.tp.filter(x => x !== t); o.sub = o.sub.filter(x => !x.startsWith(t + '||')).concat(all.filter(x => x !== k)); }
+    else if (o.sub.includes(k)) o.sub = o.sub.filter(x => x !== k);
+    else { o.sub = o.sub.concat(k); if (all.every(x => o.sub.includes(x))) { o.sub = o.sub.filter(x => !x.startsWith(t + '||')); o.tp = o.tp.concat(t); } }
+    changed = true;
+  }
+  if (changed && cfg.onChange) cfg.onChange(o);
+  return { pk, changed };
 }

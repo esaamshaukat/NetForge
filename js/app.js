@@ -4,7 +4,7 @@ import * as A from './auth.js';
 import * as C from './crypto.js';
 import * as Dt from './data.js';
 import * as P from './sync.js';
-import { App, icon } from './ui.js';
+import { App, icon, pickerSearch, fixIndeterminate } from './ui.js';
 import * as dash from './dashboard.js';
 import * as study from './study.js';
 import * as practice from './practice.js';
@@ -77,6 +77,7 @@ async function unlock(user) {
   mountShell();
   if (moved) toast(`Moved your old progress into your account: ${moved.questions} questions, ${moved.cards} flashcards, ${moved.tests} tests.`);
   warmCaches();
+  Dt.loadSubs().then(() => { if (!running() && App.view === 'home') render(); });
 }
 function fail(msg) {
   splash(msg, '<div class="btns" style="justify-content:center"><button class="btn pri" id="retry">Try again</button><button class="btn" id="so">Sign out</button></div>');
@@ -108,7 +109,7 @@ function render() {
     h = v === 'home' ? dash.renderHome() : v === 'progress' ? dash.renderProgress() : v === 'study' ? study.render() : v === 'cards' ? fc.render() : TESTS[v].render();
   } catch (e) { console.error(e); h = `<div class="card bad">Something went wrong showing this screen: ${esc(e.message)}</div>`; }
   $('#app').innerHTML = h;
-  Dt.hydrate($('#app'));
+  Dt.hydrate($('#app')); fixIndeterminate($('#app'));
   if (v === 'cards') fc.bind($('#app'));
   renderOv(); renderBanner();
 }
@@ -121,6 +122,7 @@ App.go = async (view, o = {}) => {
   const r = running(); if (r && view !== r) { toast('Finish, pause or quit your test first.'); return; }
   busy(true);
   try {
+    if (['study', 'practice', 'exam', 'cards'].includes(view)) await Dt.loadSubs();
     if (view === 'study') await study.open(o.resume);
     else if (view === 'cards') await fc.open(o);
     else if (o.resume && TESTS[view]) await (await import('./test.js')).resume(view);
@@ -187,6 +189,7 @@ document.addEventListener('click', e => {
   if (b && !b.disabled && !(b.tagName === 'INPUT' && b.dataset.act === 'pick' && false)) act(b.dataset.act, b);
 }, true);
 document.addEventListener('input', e => {
+  if (e.target.classList && e.target.classList.contains('tpq')) { pickerSearch(e.target.dataset.pk, e.target.value); return; }
   const m = TESTS[App.view]; if (m && m.input) m.input(e.target.id, e.target);
 });
 document.addEventListener('change', async e => {

@@ -9,10 +9,11 @@ export const D = {
   Q: new Map(),          // question id -> question (only the topics loaded so far)
   noKey: new Set(), labs: new Set(),
   cardTopics: [],        // [{t,n,file,ids}]
+  subs: null,            // {topicName: [{name, q:[ids], c:[ids], kw:[...]}]}  (loaded on demand)
   version: ''
 };
 const topicP = new Map(), packP = new Map(), cardP = new Map();
-let baseMap = null;
+let baseMap = null, subsP = null;
 
 async function fetchEnc(name) {
   const f = D.manifest.files[name];
@@ -26,7 +27,7 @@ const getJSON = async name => decryptFile(await fetchEnc(name), D.key);
 export function reset() {
   D.key = D.manifest = D.meta = null; D.topics = []; D.cardTopics = [];
   D.topicOf.clear(); D.Q.clear(); D.noKey.clear(); D.labs.clear();
-  topicP.clear(); packP.clear(); cardP.clear(); baseMap = null;
+  topicP.clear(); packP.clear(); cardP.clear(); baseMap = null; D.subs = null; subsP = null;
 }
 
 export async function init(key) {
@@ -126,3 +127,22 @@ export function hydrate(root) {
   });
 }
 export const imgTag = (f, k = 'q') => `<img data-img="${esc(f)}" data-k="${k}" alt="" title="Click to enlarge" class="pic">`;
+
+// ---- subtopics (tagged at build time by keywords; the questions themselves are never changed) ----
+export function loadSubs() {
+  if (D.subs) return Promise.resolve(D.subs);
+  if (!subsP) subsP = getJSON('subtopics.enc').then(d => (D.subs = d.topics || {})).catch(() => { subsP = null; D.subs = {}; return D.subs; });
+  return subsP;
+}
+export const subsOf = t => (D.subs && D.subs[t]) || [];
+export const subKey = (t, s) => t + '||' + s;
+// Selection = whole topics (o.tp) + single subtopics (o.sub, as "topic||subtopic").
+// Returns a Set of ids (kind 'q' questions / 'c' flashcards), or null when nothing is selected (= everything).
+export function selIds(o, kind) {
+  const tp = o.tp || [], sb = o.sub || [];
+  if (!tp.length && !sb.length) return null;
+  const set = new Set(), list = kind === 'c' ? D.cardTopics : D.topics, nm = kind === 'c' ? 't' : 'name';
+  list.forEach(t => { if (tp.includes(t[nm])) t.ids.forEach(id => set.add(String(id))); });
+  sb.forEach(k => { const i = k.indexOf('||'), t = k.slice(0, i), n = k.slice(i + 2); const e = subsOf(t).find(x => x.name === n); if (e) (kind === 'c' ? e.c : e.q).forEach(id => set.add(String(id))); });
+  return set;
+}
