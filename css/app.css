@@ -205,3 +205,16 @@ select { min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: n
 .fcstats { display: flex; gap: 14px; font-size: 13px; color: var(--mu); margin: -2px 0 10px; font-weight: 600; } .fcstats .ok { color: var(--ok); } .fcstats .no { color: var(--no); }
 .star { margin-left: auto; border: 0; background: none; color: var(--mu); padding: 2px; line-height: 0; } .star .ic { width: 22px; height: 22px; } .star.on { color: #e0a100; } .star.on .ic { fill: #e0a100; }
 .score small { font-size: 16px; font-weight: 500; color: var(--mu); font-family: system-ui, sans-serif; }
+
+/* ---------- topic picker with subtopics + search ---------- */
+.tpsearch { margin: 10px 0 4px; }
+.tpq { width: 100%; background: var(--bg); border: 1px solid var(--bd); border-radius: 12px; padding: 12px 14px; font-size: 16px; }
+.tpq:focus { border-color: var(--ac); outline: none; }
+.tplistbox { margin-top: 8px; max-height: 62vh; overflow-y: auto; -webkit-overflow-scrolling: touch; border-top: 1px solid var(--bd); padding-top: 6px; }
+.tprow { display: flex; align-items: stretch; gap: 6px; margin: 6px 0; } .tprow .tp { flex: 1; min-width: 0; margin: 0; }
+.tplistbox .tp { margin: 6px 0; }
+.exp { flex: none; min-width: 64px; border: 1px solid var(--bd); background: var(--card); border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--mu); display: flex; align-items: center; justify-content: center; gap: 4px; }
+.exp.on { background: var(--acbg); border-color: var(--ac); color: var(--ac); }
+.subs { margin: 0 0 8px 18px; padding-left: 10px; border-left: 3px solid var(--acbg); }
+.tp.sub { padding: 7px 10px; border-style: dashed; } .tp.sub span { font-size: 14.5px; }
+.tplist, .tplistbox { grid-template-columns: 1fr; }
