@@ -258,3 +258,17 @@ select { min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: n
 .wm { font-weight: 800; letter-spacing: -.3px; } .wm span { color: var(--am); }
 .brand .wm { font-size: 18px; }
 .loginbox h1.wm { font-size: 28px; }
+
+/* ---------- bigger logo on PC / laptop screens ---------- */
+@media (min-width: 900px) {
+  .logoimg { width: 96px; height: 96px; border-radius: 24px; margin-bottom: 16px; }
+  .logoimg.sm { width: 44px; height: 44px; border-radius: 11px; }
+  .brand { gap: 12px; } .brand .wm { font-size: 26px; }
+  .loginbox { max-width: 440px; padding: 34px 32px; gap: 14px; }
+  .loginbox h1.wm { font-size: 40px; }
+  .loginbox p { font-size: 17px; }
+  #top { padding-top: calc(10px + env(safe-area-inset-top)); padding-bottom: 10px; }
+  #toast, .banner { top: 66px; }
+  .tbar { top: 76px; }
+}
+@media (min-width: 1000px) { #nav { padding-top: 88px; } }

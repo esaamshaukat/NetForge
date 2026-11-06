@@ -1,2 +1,2 @@
 // Written by tools/stamp_version.py. Do not edit by hand.
-export const BUILD = '5d5c5181';
+export const BUILD = '2a3fe962';
