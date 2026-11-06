@@ -1,4 +1,4 @@
-# ENCOR 350-401 study app (split, encrypted version)
+# NetForge - networking study app (split, encrypted version)
 
 A private web app for your question bank. Visitors only ever see a sign-in box.
 The questions, explanations, pictures and flashcards are stored as **encrypted files**;

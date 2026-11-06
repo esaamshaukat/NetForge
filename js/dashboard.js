@@ -60,7 +60,7 @@ function installHelp() {
   const ua = navigator.userAgent, ios = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
   const txt = ios ? 'On iPad or iPhone, open this page in <b>Safari</b>, tap the <b>Share</b> button, then <b>Add to Home Screen</b>.'
     : /Android/.test(ua) ? 'On Android, open the browser menu (three dots) and tap <b>Install app</b> or <b>Add to Home screen</b>.'
-    : 'On a PC, use Chrome or Edge: click the <b>install icon</b> at the right end of the address bar, or open the menu and choose <b>Install ENCOR</b> (Edge: Apps, Install this site as an app).';
+    : 'On a PC, use Chrome or Edge: click the <b>install icon</b> at the right end of the address bar, or open the menu and choose <b>Install NetForge</b> (Edge: Apps, Install this site as an app).';
   return '<div class="note"><b>Install on this device:</b> ' + txt + '</div>';
 }
 
@@ -96,7 +96,7 @@ export async function handle(a, b) {
   if (a === 'resumego') { const m = b.dataset.m; if (m === 'study') await App.go('study', { resume: true }); else await App.go(m, { resume: true }); return true; }
   if (a === 'dweak') { const rows = topicStats().sort((x, y) => (x.seen ? x.rd : -1) - (y.seen ? y.rd : -1)).slice(0, 3).map(r => r.t); startWeak(rows); await App.go('practice'); App.toast('Practice set up for your 3 weakest topics: ' + rows.join(', ') + '. Adjust anything, then press Start.'); return true; }
   if (a === 'syncnow') { App.toast('Syncing...'); const ok = await P.syncNow(true); App.toast(ok ? 'Everything is synced.' : (navigator.onLine ? 'Could not sync. Your progress is safe on this device and will retry.' : 'You are offline. Your progress is saved on this device.')); return true; }
-  if (a === 'pexp') { download('encor_progress_' + new Date().toISOString().slice(0, 10) + '.json', P.exportProgress()); App.toast('Saved your progress as a JSON file.'); return true; }
+  if (a === 'pexp') { download('netforge_progress_' + new Date().toISOString().slice(0, 10) + '.json', P.exportProgress()); App.toast('Saved your progress as a JSON file.'); return true; }
   if (a === 'pimp') { document.querySelector('#pfile').click(); return false; }
   if (a === 'oldimp') { const r = await P.migrateFromOldApp(true); App.toast(r ? `Moved progress from the old app: ${r.questions} questions, ${r.cards} flashcards, ${r.tests} tests.` : 'No old-app progress was found in this browser. If the old app was on another address, use its "Export my progress" button and import that file here.'); return true; }
   if (a === 'preset') { resetAsk = true; return true; }

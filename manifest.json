@@ -1,7 +1,7 @@
 {
-  "name": "ENCOR 350-401 Study",
-  "short_name": "ENCOR",
-  "description": "Private study app for the Cisco CCNP ENCOR (350-401) exam.",
+  "name": "NetForge",
+  "short_name": "NetForge",
+  "description": "Study app for networking students: questions, practice tests, exams and flashcards.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

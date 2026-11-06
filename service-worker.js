@@ -5,11 +5,12 @@
    - A new version waits until you tap "Update now" in the app (no surprise reloads mid-test).
    tools/stamp_version.py rewrites the BUILD and SHELL_FILES lines below. */
 // >>> stamped
-const BUILD = '2b78058c';
+const BUILD = '5d5c5181';
 const SHELL_FILES = [
   './',
   'css/app.css',
   'icons/apple-touch-icon.png',
+  'icons/favicon-32.png',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/maskable-512.png',
