@@ -126,7 +126,7 @@ function renderBuild() {
   let due = 0, missed = 0;
   const seenU = new Set(); unitCards(su).flat().forEach(c => { if (seenU.has(String(c.id))) return; seenU.add(String(c.id)); const i = P.cardInfo(c.id); if (i.last === 'm') missed++; else if (i.seen && i.due <= today) due++; });
   let h = '';
-  if (FC.msg) h += `<div class="note">${esc(FC.msg)}</div>`;
+  if (FC.msg) h += `<div class="note span">${esc(FC.msg)}</div>`;
   h += `<div class="card"><div class="thead"><h2>Today's review</h2><span class="chip ${sk.doneToday ? 'g' : 'n'}">Streak ${sk.n} day${sk.n === 1 ? '' : 's'}${sk.best > sk.n ? ' · best ' + sk.best : ''}</span></div>`;
   h += su.k ? `<div class="mu">Your study topics: ${stNames.map(esc).join(', ')}.<br>${missed + due} card${missed + due === 1 ? '' : 's'} due or missed. Mix: ${quickSize(su.k)} cards, split evenly, Missed first, then Due, Seen, New.</div><div class="btns"><button class="btn pri big" data-act="fcquick">Start today's review (${quickSize(su.k)})</button></div>`
     : '<div class="mu">Mark the topics you are studying right now and get a daily mix of 20 to 30 cards with one tap.</div>';
@@ -137,10 +137,10 @@ function renderBuild() {
   else h += stNames.length ? `<div class="tgls">${stNames.map(t => `<span class="tgl on static">${esc(t)}</span>`).join('')}</div>` : '<div class="mu">None yet. Tap Edit.</div>';
   h += '</div>';
 
-  if (saved && saved.ids && saved.i < saved.ids.length) h += `<div class="card resume"><b>Unfinished flashcard session</b><div class="mu">Card ${saved.i + 1} of ${saved.ids.length}. Saved to your account.</div><div class="btns"><button class="btn pri" data-act="fcresume">Resume</button><button class="btn" data-act="fcdiscard">Discard</button></div></div>`;
+  if (saved && saved.ids && saved.i < saved.ids.length) h += `<div class="card resume span"><b>Unfinished flashcard session</b><div class="mu">Card ${saved.i + 1} of ${saved.ids.length}. Saved to your account.</div><div class="btns"><button class="btn pri" data-act="fcresume">Resume</button><button class="btn" data-act="fcdiscard">Discard</button></div></div>`;
 
   const preset = SIZES.includes(sel.count), ids = builderIds(), nMatch = pool.filter(c => matches(c, sel.types)).length;
-  h += `<div class="card"><h2>Build a session</h2>
+  h += `<div class="card span"><h2>Build a session</h2>
 <h4 class="sub">Topics and subtopics</h4>
 ${topicPicker(sel, pickerCfg('fc', null, `<button class="chipbtn" data-act="fcmine" ${su.k ? '' : 'disabled'}>My study topics</button>`))}
 <h4 class="sub">Card types <span class="mu sm">combine as you like</span></h4>
@@ -152,7 +152,7 @@ ${topicPicker(sel, pickerCfg('fc', null, `<button class="chipbtn" data-act="fcmi
 <div class="note"><b>${ids.length}</b> card${ids.length === 1 ? '' : 's'} in this session${ids.length < nMatch ? ` (${nMatch} match, limited by the number you chose)` : ''}.</div>
 <div class="btns"><button class="btn pri big" data-act="fcstart" ${ids.length ? '' : 'disabled'}>Start session</button></div></div>`;
 
-  h += `<div class="card"><h3>Progress by topic</h3><div class="mu sm" style="margin-bottom:6px">Bar = cards you last answered Got it. Tap a topic to add or remove it in the builder.</div>` +
+  h += `<div class="card span"><h3>Progress by topic</h3><div class="mu sm" style="margin-bottom:6px">Bar = cards you last answered Got it. Tap a topic to add or remove it in the builder.</div>` +
     D.cardTopics.map(x => { let k = 0, d = 0; x.ids.forEach(id => { const i = P.cardInfo(id); if (i.last === 'g') k++; if (i.seen && i.due <= today) d++; }); return `<button class="fcrow ${sel.tp.includes(x.t) ? 'on' : ''}" data-act="fctog" data-t="${esc(x.t)}"><span>${esc(x.t)}</span><span class="fcbar"><i style="width:${x.n ? k / x.n * 100 : 0}%"></i></span><span>${k}/${x.n}${d ? ` · ${d} due` : ''}</span></button>`; }).join('') +
     `<div class="btns"><button class="btn danger" data-act="fcreset">Reset flashcard progress${selIds(sel, 'c') ? ' for the selected topics' : ''}</button></div>` +
     (FC.reset ? `<div class="note bad">Clear Got it / Missed marks and due dates for ${selIds(sel, 'c') ? 'the selected topics' : 'all flashcards'}? Stars are kept. Question progress is not affected.<div class="btns"><button class="btn danger" data-act="fcresetok">Yes, reset</button><button class="btn" data-act="fcresetno">Cancel</button></div></div>` : '') + '</div>';
@@ -179,6 +179,7 @@ function renderEnd() {
 <div class="btns">${s.missed.length ? `<button class="btn pri" data-act="fcretry">Retry missed cards (${s.missed.length})</button>` : ''}<button class="btn ${s.missed.length ? '' : 'pri'}" data-act="fcback">Back to flashcards</button><button class="btn" data-act="gohome">Home</button></div></div>`;
 }
 
+export const wideScreen = () => FC.screen === 'build' || !FC.sess;
 export function render() {
   if (!D.cardTopics.length) return '<div class="card"><h2>Flashcards</h2><p class="mu">There are no flashcards in the data.</p></div>';
   if (FC.screen === 'session' && FC.sess) return renderSession();

@@ -60,7 +60,7 @@ function renderSetup(t) {
   if (!t.edited) t.mins = calcMins(n);
   const sv = savedSession(t.mode);
   let h = '';
-  if (sv) h += `<div class="card resume"><b>You have a paused ${ex ? 'exam' : 'practice test'}</b><div class="mu">Question ${Math.min((sv.i || 0) + 1, sv.qs.length)} of ${sv.qs.length}. It was saved on your account, so you can carry on from any device.</div><div class="btns"><button class="btn pri" data-act="resume">Resume</button><button class="btn" data-act="discard">Discard it</button></div></div>`;
+  if (sv) h += `<div class="card resume span"><b>You have a paused ${ex ? 'exam' : 'practice test'}</b><div class="mu">Question ${Math.min((sv.i || 0) + 1, sv.qs.length)} of ${sv.qs.length}. It was saved on your account, so you can carry on from any device.</div><div class="btns"><button class="btn pri" data-act="resume">Resume</button><button class="btn" data-act="discard">Discard it</button></div></div>`;
   h += topicPicker(t, pickerCfg(t, t.mode));
   h += `<div class="card"><h2>${ex ? 'Exam' : 'Practice test'}</h2>
 <p class="mu" style="margin-top:0">${ex ? 'Answers and explanations appear only after you submit.' : 'Like the exam, but you can <b>check each answer</b> and read the explanation straight away.'}</p>

@@ -108,7 +108,12 @@ function render() {
   try {
     h = v === 'home' ? dash.renderHome() : v === 'progress' ? dash.renderProgress() : v === 'study' ? study.render() : v === 'cards' ? fc.render() : TESTS[v].render();
   } catch (e) { console.error(e); h = `<div class="card bad">Something went wrong showing this screen: ${esc(e.message)}</div>`; }
+  // wide screens: setup / home / progress use two columns, question screens stay at a comfortable reading width
+  const cols = v === 'home' || v === 'progress' || (v === 'cards' && fc.wideScreen()) || (TESTS[v] && T[v].phase === 'setup');
+  h = `<div class="${cols ? 'cols' : 'narrow'}">${h}</div>`;
+  const keep = {}; document.querySelectorAll('.tplistbox').forEach(e => { keep[e.id] = e.scrollTop; });   // keep the topic list where it was
   $('#app').innerHTML = h;
+  document.querySelectorAll('.tplistbox').forEach(e => { if (keep[e.id]) e.scrollTop = keep[e.id]; });
   Dt.hydrate($('#app')); fixIndeterminate($('#app'));
   if (v === 'cards') fc.bind($('#app'));
   renderOv(); renderBanner();
@@ -170,13 +175,14 @@ async function act(a, b) {
   if (a === 'updlater') { waiting = null; renderBanner(); return; }
   if (a === 'resumeRun') { const m = running(); if (m) { T[m].paused = false; T[m].last = Date.now(); render(); } return; }
   const v = App.view; let ok = false;
+  const keepY = ['tp', 'sb', 'tpexp', 'tpall', 'tpclr', 'tpopen'].includes(a) ? window.scrollY : null;   // stay where you are when using the topic list
   try {
     if (v === 'home' || v === 'progress') ok = await dash.handle(a, b);
     else if (v === 'study') ok = study.handle(a, b);
     else if (v === 'cards') ok = await fc.handle(a, b);
     else if (TESTS[v]) ok = await TESTS[v].handle(a, b);
   } catch (e) { console.error(e); toast('Something went wrong: ' + (e.message || e)); ok = true; }
-  if (ok) render();
+  if (ok) { render(); if (keepY !== null) window.scrollTo(0, keepY); }
 }
 document.addEventListener('click', e => {
   if (e.target.closest('.ov.pause') && !e.target.closest('[data-act]')) return;

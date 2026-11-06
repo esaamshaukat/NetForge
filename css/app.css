@@ -218,3 +218,36 @@ select { min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: n
 .subs { margin: 0 0 8px 18px; padding-left: 10px; border-left: 3px solid var(--acbg); }
 .tp.sub { padding: 7px 10px; border-style: dashed; } .tp.sub span { font-size: 14.5px; }
 .tplist, .tplistbox { grid-template-columns: 1fr; }
+
+/* ---------- wide screens (PC / laptop / tablet landscape) ---------- */
+.narrow { width: 100%; margin: 0 auto; }
+@media (min-width: 900px) {
+  #app { max-width: 1280px; padding-left: 32px; padding-right: 32px; padding-top: 22px; }
+  .narrow { max-width: 980px; }
+  .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; align-items: start; }
+  .cols > .span, .cols > .hero, .cols > .quick, .cols > .sb.big { grid-column: 1 / -1; }
+  .rows2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 34px; }
+  .rows2 .trow:last-of-type { border-bottom: 1px solid var(--bd); }
+  .tplistbox { max-height: 68vh; }
+  .q { font-size: 18.5px; } .opt { padding: 14px 18px; } .fc { font-size: 21px; } .fcard { min-height: 320px; padding: 26px; }
+  .quick { grid-template-columns: repeat(4, minmax(0, 1fr)); } .qbtn { flex-direction: row; justify-content: center; gap: 10px; padding: 18px 8px; font-size: 15px; }
+  .hero { gap: 18px 40px; } .ringw { width: 150px; height: 150px; }
+  .actionbar { width: 980px; max-width: calc(100% - 40px); }
+  .tbar { top: 62px; }
+  #toast, .banner { max-width: 1280px; } .banner { max-width: none; }
+}
+/* side menu instead of the bottom bar */
+@media (min-width: 1000px) {
+  #shell { padding-left: 96px; }
+  #nav { top: 0; bottom: 0; right: auto; width: 96px; height: auto; flex-direction: column; justify-content: flex-start; padding: 74px 8px 12px; border-top: 0; border-right: 1px solid var(--bd); }
+  #nav button { flex: none; height: 66px; margin: 4px 0; font-size: 12px; }
+  #top { padding-left: 24px; padding-right: 24px; }
+  .actionbar { left: calc(50% + 48px); bottom: 0; border-bottom: 0; }
+  body.running #shell { padding-left: 0; }
+  body.running .actionbar { left: 50%; }
+  #nav { z-index: 41; }
+  #top { z-index: 30; }
+  #top { margin-left: -96px; padding-left: 120px; }
+  body.running #top { margin-left: 0; padding-left: 24px; }
+}
+@media (min-width: 1000px) { #app { padding-bottom: 110px !important; } }
