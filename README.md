@@ -14,7 +14,7 @@ encor-app/
 │                         flashcards, dashboard, crypto + data loader, ...)
 ├── icons/                app icons
 ├── data/                 ENCRYPTED questions, flashcards, pictures (safe to upload)
-├── tools/                extract_from_index.py, build.py, subtopics.json, stamp_version.py, make_icons.py
+├── tools/                extract_from_index.py, import_brave.py, recover_source.py, build.py, subtopics.json, stamp_version.py, make_icons.py
 ├── firestore.rules       the Firestore rules, ready to paste
 └── .gitignore            keeps secret.key and source/ out of GitHub
 ```
@@ -161,6 +161,38 @@ Monitoring: SNMP, Syslog & Logging, NetFlow, SPAN / RSPAN / ERSPAN, IP SLA, ...)
 * **Saved to your account:** all flashcard progress (status, last result, due date, stars, study topics, streak) is kept in
   one small Firestore document per user, written in batches, and is part of **Export / Import progress**.
 * An unfinished flashcard session is saved too, so you can resume it (also on another device).
+
+## Two question banks: ExamIce and Brave
+
+* **ExamIce** is the original PDF bank. **Brave** is the screenshot bank. They are never merged, de-duplicated or compared.
+* A switch **ExamIce | Brave | Both** sits at the top of Home, Study, Practice, Exam and Progress. It remembers your choice
+  (saved with your settings, so it follows you to your other devices). It stays hidden until the data contains Brave questions,
+  so the app behaves exactly as before until you build Brave in.
+* Study, Practice, Exam and the topic / subtopic lists only use the chosen bank. Flashcards stay ExamIce-only.
+  The counts in the topic list change with the bank, and topics that have no questions in that bank are hidden.
+* Progress is saved per question. Brave questions have their own ids (`brave-001` ...), so nothing mixes with ExamIce.
+  Progress shows the readiness of each bank, and Home / Progress follow the switch.
+* Brave has no written explanations. After you press Check (or after a test) an **Answer review** panel shows the source answer,
+  the community vote and the verified answer the app uses, with a short reason. Questions whose answer is still in doubt carry an
+  **Answer needs verification** tag and a warning in that panel.
+* Brave exhibits (command output, code, JSON) are typed out as text, not pictures.
+
+### Adding or updating Brave
+
+1. Keep the latest `ss_question_bank.json` on your computer.
+2. `python tools/import_brave.py path/to/ss_question_bank.json` makes `source/brave.json` (private, like the rest of `source/`).
+   Every Brave question must use one of the 22 topic names exactly; the tool stops with a clear message if one does not.
+3. `python tools/build.py` encrypts everything with your existing `secret.key`. ExamIce content is unchanged; Brave is added inside the
+   topic files and the topic list, and gets subtopic tags from the same keywords as ExamIce.
+4. Upload the `data/` folder. When the app code changed too, run `python tools/stamp_version.py` first and upload the changed app files,
+   `service-worker.js` and `js/version.js`.
+
+New Brave batches later: replace `ss_question_bank.json`, run steps 2 to 4 again.
+
+### If you lose source/
+
+`python tools/recover_source.py` rebuilds `source/` from the encrypted `data/` folder and your `secret.key`
+(the same key is saved in Firestore, `config` > `bank` > `key`). Then `python tools/build.py` makes identical files again.
 
 ## Things that changed on purpose
 

@@ -2,7 +2,8 @@
 import { esc, fmt, pct, download, dayNum } from './util.js';
 import { D, selIds } from './data.js';
 import * as P from './sync.js';
-import { App, icon } from './ui.js';
+import { App, icon, bankSwitch } from './ui.js';
+import { bank, bankName, inBank, hasBrave } from './bank.js';
 import { startWeak, savedSession } from './test.js';
 
 let sort = 'weak', resetAsk = false;
@@ -10,9 +11,9 @@ const acc = a => (a[0] + a[1]) ? Math.round(a[0] / (a[0] + a[1]) * 100) + '%' : 
 const band = r => !r.seen ? ['Not started', 'n'] : r.rd < .4 ? ['Needs work', 'r'] : r.rd < .7 ? ['Getting there', 'a'] : ['Strong', 'g'];
 
 // Per-topic numbers, worked out from the topic list only (no question files needed).
-export function topicStats() {
+export function topicStats(b = bank()) {
   return D.topics.map(t => {
-    const skip = new Set(t.noKey), ids = t.ids.filter(id => !skip.has(id));
+    const skip = new Set(t.noKey), ids = t.ids.filter(id => !skip.has(id) && inBank(id, b));
     let c = 0, w = 0; const m = { s: [0, 0], p: [0, 0], e: [0, 0] };
     ids.forEach(id => { const s = P.getStat(id); if (!s) return; if (s.last === 'c') c++; else if (s.last === 'w') w++; ['s', 'p', 'e'].forEach(k => { m[k][0] += s[k][0]; m[k][1] += s[k][1]; }); });
     return { t: t.name, n: ids.length, c, w, rd: ids.length ? c / ids.length : 0, seen: c + w, m };
@@ -44,7 +45,7 @@ export function renderHome() {
   if (ss && ss.qid) cont.push(`<button class="contbtn" data-act="resumego" data-m="study">${icon('study')}<span><b>Continue studying</b><small>${esc(D.topicOf.get(ss.qid) || 'Study mode')} · question ${(ss.i || 0) + 1}</small></span>${icon('right')}</button>`);
   const rv = reviewInfo(), fs = P.getSession('cards');
   if (fs && fs.ids && fs.i < fs.ids.length) cont.push(`<button class="contbtn" data-act="resumego" data-m="cards">${icon('cards')}<span><b>Continue flashcards</b><small>Card ${fs.i + 1} of ${fs.ids.length}</small></span>${icon('right')}</button>`);
-  let h = `<div class="card hero">${ring(pct(T.C, T.N), 'ready')}<div class="kpis"><div class="kpi"><b>${T.seen}<small>/${T.N}</small></b><span>attempted</span></div><div class="kpi"><b>${acc(T.all)}</b><span>accuracy</span></div><div class="kpi today"><b>${today}<small>/${goal}</small></b><span>answered today</span><i style="width:${Math.min(100, pct(today, goal))}%"></i></div></div></div>`;
+  let h = bankSwitch() + `<div class="card hero">${ring(pct(T.C, T.N), 'ready')}<div class="kpis"><div class="kpi"><b>${T.seen}<small>/${T.N}</small></b><span>attempted</span></div><div class="kpi"><b>${acc(T.all)}</b><span>accuracy</span></div><div class="kpi today"><b>${today}<small>/${goal}</small></b><span>answered today</span><i style="width:${Math.min(100, pct(today, goal))}%"></i></div></div></div>`;
   h += `<div class="card"><div class="thead"><h2>Today's review</h2><span class="chip ${rv.sk.doneToday ? 'g' : 'n'}">Streak ${rv.sk.n} day${rv.sk.n === 1 ? '' : 's'}</span></div>` + (rv.st.length ? `<div class="mu">${rv.st.map(esc).join(', ')}<br>${rv.due} flashcard${rv.due === 1 ? '' : 's'} due or missed.</div><div class="btns"><button class="btn pri" data-act="quickrev">Start today's review (${rv.n} cards)</button></div>` : `<div class="mu">Choose the topics you are studying now and get a daily mix of 20 to 30 flashcards.</div><div class="btns"><button class="btn pri" data-act="dgo" data-m="cards">Choose my study topics</button></div>`) + '</div>';
   h += `<div class="card"><h2>Continue where you left off</h2>${cont.length ? cont.join('') : '<div class="mu">Nothing paused. Pick something below to start.</div>'}</div>`;
   h += `<div class="quick"><button class="qbtn" data-act="dgo" data-m="study">${icon('study')}Study</button><button class="qbtn" data-act="dgo" data-m="practice">${icon('practice')}Practice</button><button class="qbtn" data-act="dgo" data-m="exam">${icon('exam')}Exam</button><button class="qbtn" data-act="dgo" data-m="cards">${icon('cards')}Flashcards</button></div>`;
@@ -64,13 +65,19 @@ function installHelp() {
   return '<div class="note"><b>Install on this device:</b> ' + txt + '</div>';
 }
 
+// Readiness for each bank side by side (shown on Progress once Brave is in the data).
+function bankSplit() {
+  const row = (b, label) => { const t = totals(topicStats(b)); return `<div class="trow"><div class="thead"><b>${label}</b><span class="mu sm">${t.seen}/${t.N} attempted · accuracy ${acc(t.all)}</span><b>${pct(t.C, t.N)}%</b></div><div class="sb"><i class="c" style="width:${pct(t.C, t.N)}%"></i><i class="w" style="width:${pct(t.W, t.N)}%"></i></div></div>`; };
+  return `<div class="card span"><h2>Readiness by bank</h2>${row('examice', 'ExamIce')}${row('brave', 'Brave')}</div>`;
+}
+
 export function renderProgress() {
   const ts = topicStats(), T = totals(ts), hist = P.history();
   const lastE = [...hist].reverse().find(h => h.mode === 'exam');
   const rows = ts.slice();
   if (sort === 'weak') rows.sort((a, b) => (a.seen ? a.rd : -1) - (b.seen ? b.rd : -1) || a.t.localeCompare(b.t)); else if (sort === 'strong') rows.sort((a, b) => b.rd - a.rd); else rows.sort((a, b) => a.t.localeCompare(b.t));
-  let h = `<div class="card hero">${ring(pct(T.C, T.N), 'ready')}<div class="kpis"><div class="kpi"><b>${T.C}<small>/${T.N}</small></b><span>last answered right</span></div><div class="kpi"><b>${acc(T.all)}</b><span>accuracy</span></div><div class="kpi"><b>${hist.length}</b><span>tests taken</span></div><div class="kpi"><b>${lastE ? Math.round(lastE.c / Math.max(1, lastE.tot) * 100) + '%' : '-'}</b><span>last exam</span></div></div></div>
-<div class="sb big"><i class="c" style="width:${pct(T.C, T.N)}%"></i><i class="w" style="width:${pct(T.W, T.N)}%"></i></div><div class="mu sm span" style="margin:6px 2px 12px">Green = last answered right, red = last answered wrong, grey = not attempted. Accuracy: Study ${acc(T.tot.s)} · Practice ${acc(T.tot.p)} · Exam ${acc(T.tot.e)}</div>`;
+  let h = bankSwitch() + `<div class="card hero">${ring(pct(T.C, T.N), 'ready')}<div class="kpis"><div class="kpi"><b>${T.C}<small>/${T.N}</small></b><span>last answered right</span></div><div class="kpi"><b>${acc(T.all)}</b><span>accuracy</span></div><div class="kpi"><b>${hist.length}</b><span>tests taken</span></div><div class="kpi"><b>${lastE ? Math.round(lastE.c / Math.max(1, lastE.tot) * 100) + '%' : '-'}</b><span>last exam</span></div></div></div>
+<div class="sb big"><i class="c" style="width:${pct(T.C, T.N)}%"></i><i class="w" style="width:${pct(T.W, T.N)}%"></i></div><div class="mu sm span" style="margin:6px 2px 12px">Green = last answered right, red = last answered wrong, grey = not attempted. Accuracy: Study ${acc(T.tot.s)} · Practice ${acc(T.tot.p)} · Exam ${acc(T.tot.e)}</div>${hasBrave() ? bankSplit() : ''}`;
   h += `<div class="card span"><div class="thead"><h2>Readiness by topic</h2><label class="fld">Sort <select id="dsort"><option value="weak" ${sort === 'weak' ? 'selected' : ''}>Weakest first</option><option value="strong" ${sort === 'strong' ? 'selected' : ''}>Strongest first</option><option value="name" ${sort === 'name' ? 'selected' : ''}>Topic name</option></select></label></div>
 <div class="note">Readiness = share of a topic's questions you last answered correctly in Study, Practice or Exam. Untried questions count as not ready yet.</div>` +
     '<div class="rows2">' + rows.map(r => { const b = band(r); return `<div class="trow"><div class="thead"><b>${esc(r.t)}</b><span><span class="chip ${b[1]}">${b[0]}</span> <b>${Math.round(r.rd * 100)}%</b></span></div><div class="sb"><i class="c" style="width:${pct(r.c, r.n)}%"></i><i class="w" style="width:${pct(r.w, r.n)}%"></i></div><div class="tdet">Attempted ${r.seen}/${r.n} · Study ${acc(r.m.s)} · Practice ${acc(r.m.p)} · Exam ${acc(r.m.e)}</div></div>`; }).join('') + '</div></div>';
@@ -86,7 +93,7 @@ export function renderProgress() {
 <div class="btns"><button class="btn danger" data-act="preset">Reset my progress</button></div>
 ${resetAsk ? `<div class="note bad">This deletes all your saved results and test history on every device. Flashcard marks and flags are kept. <div class="btns"><button class="btn danger" data-act="presetok">Yes, reset everything</button><button class="btn" data-act="presetno">Cancel</button></div></div>` : ''}</div>
 <div class="card"><h2>Account</h2><div class="mu">${esc(App.email || '')}</div><div class="btns"><button class="btn" data-act="signout">Sign out</button>${App.installEvt ? '<button class="btn pri" data-act="install">Install app on this device</button>' : ''}</div>${installHelp()}
-<div class="mu sm" style="margin-top:10px">App version ${esc(App.build || '-')} · data version ${esc(D.version || '-')} · ${D.meta ? D.meta.questionCount : 0} questions</div></div>`;
+<div class="mu sm" style="margin-top:10px">App version ${esc(App.build || '-')} · data version ${esc(D.version || '-')} · ${D.meta ? (hasBrave() ? (D.meta.questionCount - D.brave.size) + ' ExamIce + ' + D.brave.size + ' Brave' : D.meta.questionCount) : 0} questions</div></div>`;
   return h;
 }
 

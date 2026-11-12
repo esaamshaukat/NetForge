@@ -11,6 +11,9 @@ Every time the bank changes:   python tools/build.py
 
 What it does
   * reads the plain JSON in source/  (made by extract_from_index.py)
+  * if source/brave.json exists (made by import_brave.py) the Brave bank is built in too:
+    its questions get their own ids (brave-001 ...), are marked bank="brave" and are listed
+    under the topic they belong to. ExamIce and Brave are never merged or de-duplicated.
   * splits questions and flashcards by topic, and pictures into small packs
   * compresses (gzip) and encrypts each file with AES-256-GCM
   * writes data/*.enc + data/data-manifest.json (file list + versions)
@@ -99,6 +102,44 @@ def read(name):
     return json.loads(p.read_text(encoding="utf-8"))
 
 
+def load_brave(existing_ids, topic_names):
+    """Reads source/brave.json (optional). Returns the list of Brave questions, ready to add."""
+    p = SRC / "brave.json"
+    if not p.exists():
+        return []
+    raw = json.loads(p.read_text(encoding="utf-8"))
+    items = raw["questions"] if isinstance(raw, dict) else raw
+    out, seen, problems = [], set(), []
+    for q in items:
+        qid = str(q.get("id", "")).strip()
+        if not qid:
+            problems.append("a Brave question has no id")
+            continue
+        if qid in existing_ids or qid in seen:
+            problems.append("%s: this id is already used" % qid)
+            continue
+        if q.get("topic") not in topic_names:
+            problems.append("%s: topic %r is not one of the ExamIce topics" % (qid, q.get("topic")))
+            continue
+        if not q.get("question") or not q.get("options"):
+            problems.append("%s: missing question text or options" % qid)
+            continue
+        if not q.get("correctAnswer"):
+            problems.append("%s: no correct answer" % qid)
+            continue
+        seen.add(qid)
+        q = dict(q)
+        q.update({"id": qid, "bank": "brave"})
+        q.setdefault("type", "mcq")
+        q.setdefault("explanation", "")
+        q.setdefault("images", [])
+        q.setdefault("optionImages", {})
+        out.append(q)
+    if problems:
+        sys.exit("Problems in source/brave.json (nothing was built):\n  " + "\n  ".join(problems))
+    return out
+
+
 def pack_images(images, ordered_names, prefix):
     """Group pictures (in the given order, so one question's pictures stay together) into packs."""
     packs, cur, size, index = [], {}, 0, {}
@@ -155,8 +196,10 @@ def kw_rx(k):
     return re.compile(r"(?<![A-Za-z0-9])" + re.escape(k) + r"(?:s|es)?(?![A-Za-z0-9])", 0 if case_sensitive else re.I)
 
 
-def tag_topic(defn, a, b, max_df=0.22):
-    """a/b: id -> text (main text / fallback text). Returns ({sub: [ids]}, [unmatched ids], {sub: [keywords used]})."""
+def tag_topic(defn, a, b, max_df=0.22, extra=None):
+    """a/b: id -> text (main text / fallback text). Returns ({sub: [ids]}, [unmatched ids], {sub: [keywords used]}).
+    extra = (a2, b2): more items (the Brave bank) tagged with the SAME keywords. The keywords are chosen from a/b only,
+    so adding Brave never changes how the ExamIce questions were tagged."""
     subs, used = {}, {}
     n = max(1, len(a))
     for sub, kws in defn.items():
@@ -175,10 +218,12 @@ def tag_topic(defn, a, b, max_df=0.22):
     def score(text):
         return {sb: len({k for k, rx in g if rx.search(text)}) for sb, g in subs.items()}
     out, other = {sb: [] for sb in subs}, []
-    for i, ta in a.items():
+    items = list(a.items()) + (list(extra[0].items()) if extra else [])
+    fallback = {**b, **(extra[1] if extra else {})}
+    for i, ta in items:
         sc = score(ta)
         if max(sc.values() or [0]) == 0:
-            sc = score(b.get(i, ""))
+            sc = score(fallback.get(i, ""))
         mx = max(sc.values() or [0])
         if mx == 0:
             other.append(i)
@@ -222,6 +267,9 @@ def main():
     for q in qs:
         if q["topic"] not in topics:
             topics.append(q["topic"])
+    brave = load_brave({str(q["id"]) for q in qs}, set(topics))
+    n_examice = len(qs)
+    qs = qs + brave
     by = {t: [] for t in topics}
     for q in qs:
         by[q["topic"]].append(q)
@@ -247,7 +295,8 @@ def main():
                 img_order.append(im["file"])
             for v in (q.get("optionImages") or {}).values():
                 img_order.append(v)
-        meta_topics.append({"name": t, "file": fname, "ids": ids, "labs": labs, "noKey": nokey, "info": info.get(t, "")})
+        meta_topics.append({"name": t, "file": fname, "ids": ids, "labs": labs, "noKey": nokey, "info": info.get(t, ""),
+                            "brave": [q["id"] for q in by[t] if q.get("bank") == "brave"]})
 
     # ---- question pictures in small packs ----
     qpacks, qindex = pack_images(images, img_order, "images")
@@ -287,12 +336,17 @@ def main():
         defn = taxo.get(t)
         if not defn:
             continue
-        qa = {q["id"]: q["question"] + " " + " ".join(str(v) for v in q["options"].values()) for q in by[t]}
-        qb = {q["id"]: q.get("explanation", "") for q in by[t]}
+        text = lambda q: q["question"] + " " + " ".join(str(v) for v in q["options"].values())
+        ex = [q for q in by[t] if q.get("bank") != "brave"]
+        bv = [q for q in by[t] if q.get("bank") == "brave"]
+        qa = {q["id"]: text(q) for q in ex}
+        qb = {q["id"]: q.get("explanation", "") for q in ex}
+        qa2 = {q["id"]: text(q) + " " + (q.get("exhibit") or "") for q in bv}
+        qb2 = {q["id"]: "" for q in bv}
         cl = cby.get(t, [])
         ca = {c["id"]: strip_html(c["f"]) for c in cl}
         cb = {c["id"]: strip_html(c["b"]) for c in cl}
-        qs_, qo, qk = tag_topic(defn, qa, qb)
+        qs_, qo, qk = tag_topic(defn, qa, qb, extra=(qa2, qb2))
         cs_, co, ck = tag_topic(defn, ca, cb)
         lst = []
         for sb in defn:
@@ -301,7 +355,7 @@ def main():
         if qo or co:
             lst.append({"name": OTHER, "q": qo, "c": co, "kw": []})
         sub_out[t] = lst
-        report.append((t, len(qa), len(qo), len(ca), len(co), lst))
+        report.append((t, len(qa) + len(qa2), len(qo), len(ca), len(co), lst))
     if args.report:
         print("Subtopic coverage (items with no subtopic go to '%s'):" % OTHER)
         for t, nq, nqo, nc, nco, lst in report:
@@ -315,6 +369,8 @@ def main():
     meta = {
         "schema": 1,
         "questionCount": len(qs),
+        "examiceCount": n_examice,
+        "braveCount": len(brave),
         "topics": meta_topics,
         "cardTopics": meta_cards,
         "images": qindex,
@@ -336,7 +392,7 @@ def main():
 
     total = sum(w["size"] for w in written.values())
     print("Built %d encrypted files (%.1f MB in total) into data/" % (len(written), total / 1e6))
-    print("  questions : %d in %d topic files" % (len(qs), len(meta_topics)))
+    print("  questions : %d in %d topic files  (ExamIce %d + Brave %d)" % (len(qs), len(meta_topics), n_examice, len(brave)))
     print("  pictures  : %d in %d packs;  flashcard pictures: %d in %d packs" % (len(qindex), len(qpacks), len(cindex), len(cpacks)))
     print("  flashcards: %d in %d topic files" % (len(cdata["cards"]), len(meta_cards)))
     print("  data version: %s" % version)

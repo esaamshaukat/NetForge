@@ -8,6 +8,7 @@ export const D = {
   topicOf: new Map(),    // question id -> topic name
   Q: new Map(),          // question id -> question (only the topics loaded so far)
   noKey: new Set(), labs: new Set(),
+  brave: new Set(),      // ids of the questions that belong to the Brave bank (everything else is ExamIce)
   cardTopics: [],        // [{t,n,file,ids}]
   subs: null,            // {topicName: [{name, q:[ids], c:[ids], kw:[...]}]}  (loaded on demand)
   version: ''
@@ -26,7 +27,7 @@ const getJSON = async name => decryptFile(await fetchEnc(name), D.key);
 
 export function reset() {
   D.key = D.manifest = D.meta = null; D.topics = []; D.cardTopics = [];
-  D.topicOf.clear(); D.Q.clear(); D.noKey.clear(); D.labs.clear();
+  D.topicOf.clear(); D.Q.clear(); D.noKey.clear(); D.labs.clear(); D.brave.clear();
   topicP.clear(); packP.clear(); cardP.clear(); baseMap = null; D.subs = null; subsP = null;
 }
 
@@ -44,6 +45,7 @@ export async function init(key) {
     t.ids.forEach(id => D.topicOf.set(id, t.name));
     t.noKey.forEach(id => D.noKey.add(id));
     t.labs.forEach(id => D.labs.add(id));
+    (t.brave || []).forEach(id => D.brave.add(String(id)));
   });
   keepOnly();
 }

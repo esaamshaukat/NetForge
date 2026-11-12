@@ -11,6 +11,7 @@ import * as practice from './practice.js';
 import * as exam from './exam.js';
 import * as fc from './flashcards.js';
 import { T, tick, running, pauseNow } from './test.js';
+import { setBank, pruneSelection } from './bank.js';
 import { BUILD } from './version.js';
 
 App.build = BUILD;
@@ -173,6 +174,12 @@ async function act(a, b) {
   if (a === 'lbclose') { lbSrc = ''; renderOv(); return; }
   if (a === 'upd') { if (waiting) waiting.postMessage({ type: 'SKIP_WAITING' }); return; }
   if (a === 'updlater') { waiting = null; renderBanner(); return; }
+  if (a === 'bank') {
+    setBank(b.dataset.v);
+    [study.S, T.practice, T.exam].forEach(pruneSelection);   // drop picks that the new bank does not have
+    if (App.view === 'study') study.rebuild();
+    render(); return;
+  }
   if (a === 'resumeRun') { const m = running(); if (m) { T[m].paused = false; T[m].last = Date.now(); render(); } return; }
   const v = App.view; let ok = false;
   const keepY = ['tp', 'sb', 'tpexp', 'tpall', 'tpclr', 'tpopen'].includes(a) ? window.scrollY : null;   // stay where you are when using the topic list

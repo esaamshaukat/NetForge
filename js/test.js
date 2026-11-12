@@ -1,8 +1,9 @@
 // Practice test and Exam share this engine (mode = 'practice' | 'exam').
 import { esc, same, shuf, fmt } from './util.js';
+import { bank, bankName, inBank, hasBrave } from './bank.js';
 import { D, ensureForIds, getQ, loadSubs, selIds, info } from './data.js';
 import * as P from './sync.js';
-import { App, icon, actionBar, qBody, opts, explHtml, result, topicPicker, topicAction } from './ui.js';
+import { App, icon, actionBar, qBody, opts, explHtml, result, topicPicker, topicAction, bankSwitch } from './ui.js';
 
 const REAL_MIN = 120, REAL_LO = 85, REAL_HI = 110, REAL_AVG = (REAL_LO + REAL_HI) / 2;
 const calcMins = n => Math.max(1, Math.ceil(n * REAL_MIN / REAL_AVG));
@@ -16,12 +17,12 @@ function poolIds(t, topics = true) {
   const sel = topics ? selIds(t, 'q') : null;
   D.topics.forEach(tp => {
     const skip = new Set(tp.noKey), labs = new Set(tp.labs);
-    tp.ids.forEach(id => { if (sel && !sel.has(String(id))) return; if (skip.has(id)) return; if (labs.has(id) && !t.labs) return; ids.push(id); });
+    tp.ids.forEach(id => { if (!inBank(id)) return; if (sel && !sel.has(String(id))) return; if (skip.has(id)) return; if (labs.has(id) && !t.labs) return; ids.push(id); });
   });
   if (t.focus === 'flag') ids = ids.filter(id => P.isFlag(id));
   return ids;
 }
-const pickerCfg = (t, pk) => ({ pk, kind: 'q', get topics() { return D.topics.map(x => ({ name: x.name, ids: x.ids })); }, info, count: ids => ids.filter(id => !D.noKey.has(id) && (t.labs || !D.labs.has(id))).length });
+const pickerCfg = (t, pk) => ({ pk, kind: 'q', get topics() { return D.topics.map(x => ({ name: x.name, ids: x.ids })); }, info, count: ids => ids.filter(id => inBank(id) && !D.noKey.has(id) && (t.labs || !D.labs.has(id))).length });
 const prio = id => { const s = P.getStat(id); return !s ? 1 : s.last === 'w' ? 0 : 2; };
 function draw(ids, n, focus) {
   const by = {};
@@ -56,10 +57,10 @@ export async function resume(m) {
 // ---- rendering ----
 function renderSetup(t) {
   const ex = t.mode === 'exam', pool = poolIds(t), all = D.topics.length;
-  const noKeyN = D.noKey.size, labN = D.labs.size, n = Math.max(1, Math.min(pool.length || 1, t.n));
+  const noKeyN = [...D.noKey].filter(id => inBank(id)).length, labN = [...D.labs].filter(id => inBank(id)).length, n = Math.max(1, Math.min(pool.length || 1, t.n));
   if (!t.edited) t.mins = calcMins(n);
   const sv = savedSession(t.mode);
-  let h = '';
+  let h = bankSwitch();
   if (sv) h += `<div class="card resume span"><b>You have a paused ${ex ? 'exam' : 'practice test'}</b><div class="mu">Question ${Math.min((sv.i || 0) + 1, sv.qs.length)} of ${sv.qs.length}. It was saved on your account, so you can carry on from any device.</div><div class="btns"><button class="btn pri" data-act="resume">Resume</button><button class="btn" data-act="discard">Discard it</button></div></div>`;
   h += topicPicker(t, pickerCfg(t, t.mode));
   h += `<div class="card"><h2>${ex ? 'Exam' : 'Practice test'}</h2>
@@ -69,7 +70,7 @@ function renderSetup(t) {
 <div class="row"><label class="chk"><input type="checkbox" id="timed" ${t.timed ? 'checked' : ''}> Timed</label>${t.timed ? `<label class="fld">Minutes <input type="number" id="mins" min="1" max="600" value="${t.mins}" inputmode="numeric"></label>` : '<span class="mu">Untimed: a stopwatch still shows how long you took.</span>'}</div>
 ${t.timed ? `<div class="note">The real exam gives ${REAL_MIN} minutes for ${REAL_LO} to ${REAL_HI} questions (about ${Math.round(REAL_MIN * 60 / REAL_AVG)} seconds each). The time is worked out from that, and you can change it.</div>` : ''}
 <div class="row"><label class="fld">Which questions <select id="focus"><option value="mix" ${t.focus === 'mix' ? 'selected' : ''}>Random mix</option><option value="weak" ${t.focus === 'weak' ? 'selected' : ''}>Weak spots first</option><option value="flag" ${t.focus === 'flag' ? 'selected' : ''}>My flagged questions only</option></select></label></div>
-<div class="note"><b>${pool.length}</b> question${pool.length === 1 ? '' : 's'} available. Tests leave out ${noKeyN} question${noKeyN === 1 ? '' : 's'} with no answer key${t.labs ? '' : ` and the ${labN} lab questions`}. Questions are drawn evenly across the topics you picked.</div>
+<div class="note"><b>${pool.length}</b> question${pool.length === 1 ? '' : 's'} available${hasBrave() ? ' in ' + bankName(bank()) : ''}. Tests leave out ${noKeyN} question${noKeyN === 1 ? '' : 's'} with no answer key${t.labs ? '' : ` and the ${labN} lab questions`}. Questions are drawn evenly across the topics you picked.</div>
 <div class="btns"><button class="btn pri big" data-act="start" ${pool.length ? '' : 'disabled'}>Start ${ex ? 'exam' : 'practice test'}</button></div></div>`;
   return h;
 }

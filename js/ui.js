@@ -1,6 +1,7 @@
 // Shared UI pieces: icons, question rendering, topic picker, action bar.
 import { esc } from './util.js';
 import { D, imgTag, info, subsOf, selIds } from './data.js';
+import { bank, hasBrave, BANKS, bankCounts } from './bank.js';
 
 // App is a tiny shared object so modules can ask the shell to re-render / navigate.
 export const App = { view: 'home', render() {}, go() {}, toast() {}, busy() {}, confirm() {} };
@@ -37,11 +38,19 @@ function srcInfo(q) {
   if (!q.sourcePage && !f.length) return '';
   return `<details class="src"><summary>Source and review notes</summary><div class="srcb">${q.sourcePage ? `<div>PDF page ${esc(q.sourcePage)}</div>` : ''}${f.length ? `<ul>${f.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div></details>`;
 }
+// Brave questions come from screenshots: the exhibit is typed out as text, and some answers are marked "needs verification".
+function exhibitHtml(q) {
+  const t = q.exhibit; if (!t) return '';
+  if (/^Diagram:/i.test(t)) return `<div class="exh diag"><b>Exhibit (diagram)</b><div>${esc(t.replace(/^Diagram:\s*/i, ''))}</div></div>`;
+  return `<div class="exh"><b>Exhibit</b><pre>${esc(t)}</pre></div>`;
+}
 export function qBody(q, flagged) {
-  const multi = q.correctAnswer.length > 1;
+  const multi = q.correctAnswer.length > 1, brave = q.bank === 'brave';
   const hasImg = q.images.some(i => i.role !== 'answer') || Object.keys(q.optionImages || {}).length;
-  return `<div class="meta"><span class="qid">${esc(q.id)}</span><span class="tpc">${esc(q.topic)}</span>${q.type === 'lab' ? '<span class="tag">Lab</span>' : ''}${multi ? `<span class="tag">Choose ${q.correctAnswer.length}</span>` : ''}${q.noKey ? '<span class="tag wa">No answer key</span>' : ''}${flagged ? '<span class="tag wa">Flagged</span>' : ''}</div>
-<div class="q">${esc(q.question)}</div>` + q.images.filter(i => i.role !== 'answer').map(i => imgTag(i.file)).join('') + (hasImg ? '<div class="zoomhint">Tap a picture to enlarge it.</div>' : '');
+  const idTxt = brave ? 'Brave #' + (q.sourceNumber != null ? q.sourceNumber : q.id) : q.id;
+  const chip = brave ? '<span class="tag brave">Brave</span>' : (bank() === 'both' ? '<span class="tag exi">ExamIce</span>' : '');
+  return `<div class="meta"><span class="qid">${esc(idTxt)}</span><span class="tpc">${esc(q.topic)}</span>${chip}${q.type === 'lab' ? '<span class="tag">Lab</span>' : ''}${multi ? `<span class="tag">Choose ${q.correctAnswer.length}</span>` : ''}${q.noKey ? '<span class="tag wa">No answer key</span>' : ''}${brave && q.needsVerification ? '<span class="tag wa">Answer needs verification</span>' : ''}${flagged ? '<span class="tag wa">Flagged</span>' : ''}</div>
+<div class="q">${esc(q.question)}</div>` + exhibitHtml(q) + q.images.filter(i => i.role !== 'answer').map(i => imgTag(i.file)).join('') + (hasImg ? '<div class="zoomhint">Tap a picture to enlarge it.</div>' : '');
 }
 export function opts(q, sel, checked) {
   const t = q.correctAnswer.length > 1 ? 'checkbox' : 'radio';
@@ -51,7 +60,18 @@ export function opts(q, sel, checked) {
     return `<label class="${cl}"><input type="${t}" name="o" data-act="pick" data-k="${k}" ${s ? 'checked' : ''} ${checked ? 'disabled' : ''}><b>${k}</b><span>${v ? esc(v) : ''}${q.optionImages && q.optionImages[k] ? imgTag(q.optionImages[k]) : ''}</span></label>`;
   }).join('');
 }
+// Brave has no written explanations. This panel shows where the answer came from instead.
+function braveReview(q) {
+  const list = a => (a && a.length ? a.join(', ') : 'none');
+  const v = q.communityVotes && Object.keys(q.communityVotes).length ? Object.entries(q.communityVotes).map(([k, p]) => `${k} ${p}%`).join(', ') : 'no votes shown';
+  const f = Array.isArray(q.flags) ? q.flags : [];
+  return `<div class="expl brave"><h4>Answer review</h4>${q.needsVerification ? '<div class="res warn">This answer needs to be verified. Check it before you rely on it.</div>' : ''}
+<table class="rvt"><tr><th>Source answer</th><td>${esc(list(q.sourceAnswer))}</td></tr><tr><th>Community vote</th><td>${esc(v)}</td></tr><tr><th>Verified answer (used here)</th><td><b>${esc(list(q.correctAnswer))}</b></td></tr></table>
+${q.verificationNote ? `<div class="ex-t">${esc(q.verificationNote)}</div>` : ''}${f.length ? `<ul class="rvf">${f.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+<div class="mu sm" style="margin-top:8px">The Brave bank has no written explanations.</div></div>`;
+}
 export function explHtml(q) {
+  if (q.bank === 'brave') return braveReview(q);
   const a = q.images.filter(i => i.role === 'answer');
   let h = a.map(i => imgTag(i.file)).join('');
   if (q.explanation) h += `<div class="ex-t">${esc(q.explanation)}</div>`;
@@ -160,4 +180,11 @@ export function topicAction(a, b) {
   }
   if (changed && cfg.onChange) cfg.onChange(o);
   return { pk, changed };
+}
+
+// ---------- question bank switch: ExamIce | Brave | Both (only shown once the data has Brave questions) ----------
+export function bankSwitch(note) {
+  if (!hasBrave()) return '';
+  const cur = bank(), c = bankCounts();
+  return `<div class="card bankbar span"><div class="bhead"><b>Question bank</b>${note ? `<span class="mu sm">${note}</span>` : ''}</div><div class="seg" role="radiogroup" aria-label="Question bank">${BANKS.map(([k, l]) => `<button type="button" role="radio" aria-checked="${cur === k}" class="${cur === k ? 'on' : ''}" data-act="bank" data-v="${k}"><span>${l}</span><i>${c[k]}</i></button>`).join('')}</div></div>`;
 }
