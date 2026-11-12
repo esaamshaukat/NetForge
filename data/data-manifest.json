@@ -1,6 +1,6 @@
 {
- "dataVersion": "21b059525e",
- "builtAt": 1793908262,
+ "dataVersion": "e76eedaed8",
+ "builtAt": 1794439772,
  "files": {
   "card-images-01.enc": {
    "v": "4626b455db",
@@ -147,28 +147,28 @@
    "size": 868110
   },
   "meta.enc": {
-   "v": "f29bd6c422",
-   "size": 26647
+   "v": "c6c0dac0b1",
+   "size": 27011
   },
   "questions-automation-programmability.enc": {
-   "v": "b28512304a",
-   "size": 45673
+   "v": "1f750f3b7f",
+   "size": 52506
   },
   "questions-bgp.enc": {
    "v": "d44009926f",
    "size": 8051
   },
   "questions-campus-design-high-availability.enc": {
-   "v": "b46c1c5bb4",
-   "size": 6418
+   "v": "20a38fc2e0",
+   "size": 7374
   },
   "questions-cisco-sd-access.enc": {
-   "v": "9616716063",
-   "size": 9709
+   "v": "c05efc34d2",
+   "size": 10785
   },
   "questions-cisco-sd-wan.enc": {
-   "v": "fd5e188a69",
-   "size": 7878
+   "v": "812ef63440",
+   "size": 9065
   },
   "questions-cloud-vs-on-premises.enc": {
    "v": "e2bd8f5579",
@@ -179,40 +179,40 @@
    "size": 1684
   },
   "questions-fhrp-hsrp-vrrp-glbp.enc": {
-   "v": "4fcc2e4955",
-   "size": 10654
+   "v": "6c67dfe674",
+   "size": 11796
   },
   "questions-hypervisors-virtual-machines.enc": {
-   "v": "6a2369d27c",
-   "size": 7383
+   "v": "feed15c90d",
+   "size": 7591
   },
   "questions-infrastructure-security-acls-aaa-hardening.enc": {
-   "v": "07732e7ff5",
-   "size": 24800
+   "v": "4ea8187bae",
+   "size": 27165
   },
   "questions-ip-services-dhcp-nat-ntp-dns.enc": {
-   "v": "23f9d472da",
-   "size": 8994
+   "v": "3efd72241f",
+   "size": 10053
   },
   "questions-layer-2-switching-vlan-stp-etherchannel.enc": {
    "v": "661303dd15",
    "size": 13115
   },
   "questions-lisp-vxlan.enc": {
-   "v": "d97137b71a",
-   "size": 6856
+   "v": "6871d6f43e",
+   "size": 7115
   },
   "questions-multicast-pim-rp.enc": {
    "v": "2e923c7f36",
    "size": 2974
   },
   "questions-network-access-security-802-1x-ise-wlan-security.enc": {
-   "v": "c4b86f5cc9",
-   "size": 9947
+   "v": "23fdc575e4",
+   "size": 10753
   },
   "questions-network-assurance-monitoring.enc": {
-   "v": "3b1e977cac",
-   "size": 16788
+   "v": "b2e6912193",
+   "size": 17263
   },
   "questions-ospf.enc": {
    "v": "fb3941314b",
@@ -223,12 +223,12 @@
    "size": 5143
   },
   "questions-qos.enc": {
-   "v": "71af8c9a83",
-   "size": 4713
+   "v": "05ce31226c",
+   "size": 6274
   },
   "questions-routing-fundamentals-path-control.enc": {
-   "v": "b4e1ef36ac",
-   "size": 4160
+   "v": "6430fb63cd",
+   "size": 4796
   },
   "questions-vrf-gre-ipsec-tunnels.enc": {
    "v": "eafe4c728d",
@@ -239,8 +239,8 @@
    "size": 25755
   },
   "subtopics.enc": {
-   "v": "699aa241d4",
-   "size": 47486
+   "v": "592ce98cfa",
+   "size": 47969
   }
  }
 }
