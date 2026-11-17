@@ -176,6 +176,10 @@ Monitoring: SNMP, Syslog & Logging, NetFlow, SPAN / RSPAN / ERSPAN, IP SLA, ...)
   the community vote and the verified answer the app uses, with a short reason. Questions whose answer is still in doubt carry an
   **Answer needs verification** tag and a warning in that panel.
 * Brave exhibits (command output, code, JSON) are typed out as text, not pictures.
+* Brave **drag-and-drop** questions have no A-D options. They show the question; press Solution to see the whole solution
+  (one line per pair), then mark yourself right or wrong, like the lab questions. They are left out of Practice and Exam
+  unless you tick the "Include lab and drag-and-drop questions" box. Their ids are `brave-dd-001` ... and they are numbered
+  separately in the source ("Drag & Drop #1 to #55").
 
 ### Adding or updating Brave
 

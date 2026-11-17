@@ -289,3 +289,5 @@ select { min-width: 0; text-overflow: ellipsis; overflow: hidden; white-space: n
 .res.warn { background: var(--wabg); color: var(--wa); }
 .rvt { margin: 6px 0 10px; } .rvt th { width: 48%; color: var(--mu); font-weight: 600; } .rvt td { font-family: var(--mono); }
 .rvf { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: var(--mu); }
+.rvt.dd { width: 100%; } .rvt.dd th { width: 36%; vertical-align: top; padding-right: 10px; text-align: left; color: var(--tx); }
+.rvt.dd td { font-family: inherit; vertical-align: top; }

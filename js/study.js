@@ -48,7 +48,7 @@ export function render() {
   }
   if (S.expl) h += explHtml(q);
   if (q.type === 'lab' && S.expl) h += S.graded ? `<div class="res ${S.graded === 'c' ? 'ok' : 'no'}">Recorded: ${S.graded === 'c' ? 'you got it right' : 'you got it wrong'}.</div>` :
-    `<div class="note">Lab questions cannot be checked automatically. Compare with the solution above, then record how you did:<div class="btns"><button class="btn" data-act="sgrade" data-v="c">I got it right</button><button class="btn" data-act="sgrade" data-v="w">I got it wrong</button></div></div>`;
+    `<div class="note">${q.dragDrop ? 'Drag-and-drop questions' : 'Lab questions'} cannot be checked automatically. Compare with the solution above, then record how you did:<div class="btns"><button class="btn" data-act="sgrade" data-v="c">I got it right</button><button class="btn" data-act="sgrade" data-v="w">I got it wrong</button></div></div>`;
   h += '</div>';
   h += actionBar([
     { act: 'prev', icon: 'left', label: 'Previous', disabled: !S.i },

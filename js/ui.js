@@ -47,9 +47,10 @@ function exhibitHtml(q) {
 export function qBody(q, flagged) {
   const multi = q.correctAnswer.length > 1, brave = q.bank === 'brave';
   const hasImg = q.images.some(i => i.role !== 'answer') || Object.keys(q.optionImages || {}).length;
-  const idTxt = brave ? 'Brave #' + (q.sourceNumber != null ? q.sourceNumber : q.id) : q.id;
+  const dd = brave && q.dragDrop;
+  const idTxt = brave ? (dd ? 'Drag & Drop #' : 'Brave #') + (q.sourceNumber != null ? q.sourceNumber : q.id) : q.id;
   const chip = brave ? '<span class="tag brave">Brave</span>' : (bank() === 'both' ? '<span class="tag exi">ExamIce</span>' : '');
-  return `<div class="meta"><span class="qid">${esc(idTxt)}</span><span class="tpc">${esc(q.topic)}</span>${chip}${q.type === 'lab' ? '<span class="tag">Lab</span>' : ''}${multi ? `<span class="tag">Choose ${q.correctAnswer.length}</span>` : ''}${q.noKey ? '<span class="tag wa">No answer key</span>' : ''}${brave && q.needsVerification ? '<span class="tag wa">Answer needs verification</span>' : ''}${flagged ? '<span class="tag wa">Flagged</span>' : ''}</div>
+  return `<div class="meta"><span class="qid">${esc(idTxt)}</span><span class="tpc">${esc(q.topic)}</span>${chip}${q.type === 'lab' ? `<span class="tag">${dd ? 'Drag &amp; drop' : 'Lab'}</span>` : ''}${multi ? `<span class="tag">Choose ${q.correctAnswer.length}</span>` : ''}${q.noKey ? '<span class="tag wa">No answer key</span>' : ''}${brave && q.needsVerification ? '<span class="tag wa">Answer needs verification</span>' : ''}${flagged ? '<span class="tag wa">Flagged</span>' : ''}</div>
 <div class="q">${esc(q.question)}</div>` + exhibitHtml(q) + q.images.filter(i => i.role !== 'answer').map(i => imgTag(i.file)).join('') + (hasImg ? '<div class="zoomhint">Tap a picture to enlarge it.</div>' : '');
 }
 export function opts(q, sel, checked) {
@@ -70,8 +71,18 @@ function braveReview(q) {
 ${q.verificationNote ? `<div class="ex-t">${esc(q.verificationNote)}</div>` : ''}${f.length ? `<ul class="rvf">${f.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
 <div class="mu sm" style="margin-top:8px">The Brave bank has no written explanations.</div></div>`;
 }
+// Drag-and-drop: the whole solution is the answer. One line per pair ("item -> where it goes").
+function braveDragDrop(q) {
+  const f = Array.isArray(q.flags) ? q.flags : [];
+  const rows = String(q.solution || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+    const i = l.indexOf(' -> ');
+    return i < 0 ? `<tr><td colspan="2">${esc(l)}</td></tr>` : `<tr><th>${esc(l.slice(0, i))}</th><td>${esc(l.slice(i + 4))}</td></tr>`;
+  }).join('');
+  return `<div class="expl brave"><h4>Solution</h4>${q.needsVerification ? '<div class="res warn">This solution needs to be verified. Check it before you rely on it.</div>' : ''}
+<table class="rvt dd">${rows}</table>${q.verificationNote ? `<div class="ex-t">${esc(q.verificationNote)}</div>` : ''}${f.length ? `<ul class="rvf">${f.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>`;
+}
 export function explHtml(q) {
-  if (q.bank === 'brave') return braveReview(q);
+  if (q.bank === 'brave') return q.dragDrop ? braveDragDrop(q) : braveReview(q);
   const a = q.images.filter(i => i.role === 'answer');
   let h = a.map(i => imgTag(i.file)).join('');
   if (q.explanation) h += `<div class="ex-t">${esc(q.explanation)}</div>`;

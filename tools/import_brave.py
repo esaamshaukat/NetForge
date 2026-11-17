@@ -29,6 +29,40 @@ def main():
     data = json.loads(src.read_text(encoding="utf-8"))
     topics = {k for k in json.loads((ROOT / "tools" / "subtopics.json").read_text(encoding="utf-8")) if not k.startswith("_")}
     out, bad = [], []
+    # drag-and-drop items: no options; the whole solution is the answer (shown as a self-marked "lab" question)
+    for e in data.get("dragDropQuestions", []):
+        n = e["sourceNumber"]
+        qid = "brave-dd-%03d" % n
+        if e.get("topic") not in topics:
+            bad.append("%s: topic %r is not one of the NetForge topics" % (qid, e.get("topic")))
+            continue
+        if not (e.get("answer") or "").strip():
+            bad.append("%s: no solution" % qid)
+            continue
+        note = e.get("verificationNote", "")
+        if note.startswith(PREFIX):
+            note = note[len(PREFIX):]
+        out.append({
+            "id": qid,
+            "bank": "brave",
+            "sourceNumber": n,
+            "topic": e["topic"],
+            "type": "lab",
+            "dragDrop": True,
+            "question": e["question"],
+            "exhibit": e.get("exhibitText") or "",
+            "options": {},
+            "correctAnswer": [],
+            "solution": e["answer"],
+            "explanation": "",
+            "images": [],
+            "optionImages": {},
+            "flags": list(e.get("flags") or []),
+            "confidence": e.get("confidence", ""),
+            "needsVerification": bool(e.get("needsVerification")),
+            "verificationNote": note,
+        })
+    n_dd = len(out)
     for e in data["questions"]:
         n = e["sourceNumber"]
         qid = "brave-%03d" % n
@@ -65,14 +99,14 @@ def main():
         })
     if bad:
         sys.exit("Fix these first:\n  " + "\n  ".join(bad))
-    out.sort(key=lambda q: q["sourceNumber"])
+    out.sort(key=lambda q: (q.get("dragDrop", False), q["sourceNumber"]))   # regular questions first, then drag & drop
     OUT.parent.mkdir(exist_ok=True)
     OUT.write_text(json.dumps({"questions": out}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     nv = sum(1 for q in out if q["needsVerification"])
     per = {}
     for q in out:
         per[q["topic"]] = per.get(q["topic"], 0) + 1
-    print("Brave: %d questions (%d marked 'needs verification') in %d topics" % (len(out), nv, len(per)))
+    print("Brave: %d questions + %d drag-and-drop items (%d marked 'needs verification') in %d topics" % (len(out) - n_dd, n_dd, nv, len(per)))
     for t, c in sorted(per.items(), key=lambda x: -x[1]):
         print("  %3d  %s" % (c, t))
     print("Saved %s" % OUT)

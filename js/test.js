@@ -66,11 +66,11 @@ function renderSetup(t) {
   h += `<div class="card"><h2>${ex ? 'Exam' : 'Practice test'}</h2>
 <p class="mu" style="margin-top:0">${ex ? 'Answers and explanations appear only after you submit.' : 'Like the exam, but you can <b>check each answer</b> and read the explanation straight away.'}</p>
 <div class="row"><label class="fld">How many questions <input type="number" id="n" min="1" max="${Math.max(1, pool.length)}" value="${n}" inputmode="numeric"></label></div>
-<div class="row"><label class="chk"><input type="checkbox" id="labs" ${t.labs ? 'checked' : ''}> Include lab questions (you mark them yourself)</label></div>
+<div class="row"><label class="chk"><input type="checkbox" id="labs" ${t.labs ? 'checked' : ''}> Include lab${hasBrave() ? ' and drag-and-drop' : ''} questions (you mark them yourself)</label></div>
 <div class="row"><label class="chk"><input type="checkbox" id="timed" ${t.timed ? 'checked' : ''}> Timed</label>${t.timed ? `<label class="fld">Minutes <input type="number" id="mins" min="1" max="600" value="${t.mins}" inputmode="numeric"></label>` : '<span class="mu">Untimed: a stopwatch still shows how long you took.</span>'}</div>
 ${t.timed ? `<div class="note">The real exam gives ${REAL_MIN} minutes for ${REAL_LO} to ${REAL_HI} questions (about ${Math.round(REAL_MIN * 60 / REAL_AVG)} seconds each). The time is worked out from that, and you can change it.</div>` : ''}
 <div class="row"><label class="fld">Which questions <select id="focus"><option value="mix" ${t.focus === 'mix' ? 'selected' : ''}>Random mix</option><option value="weak" ${t.focus === 'weak' ? 'selected' : ''}>Weak spots first</option><option value="flag" ${t.focus === 'flag' ? 'selected' : ''}>My flagged questions only</option></select></label></div>
-<div class="note"><b>${pool.length}</b> question${pool.length === 1 ? '' : 's'} available${hasBrave() ? ' in ' + bankName(bank()) : ''}. Tests leave out ${noKeyN} question${noKeyN === 1 ? '' : 's'} with no answer key${t.labs ? '' : ` and the ${labN} lab questions`}. Questions are drawn evenly across the topics you picked.</div>
+<div class="note"><b>${pool.length}</b> question${pool.length === 1 ? '' : 's'} available${hasBrave() ? ' in ' + bankName(bank()) : ''}. Tests leave out ${noKeyN} question${noKeyN === 1 ? '' : 's'} with no answer key${t.labs ? '' : ` and the ${labN} lab${hasBrave() ? ' / drag-and-drop' : ''} questions`}. Questions are drawn evenly across the topics you picked.</div>
 <div class="btns"><button class="btn pri big" data-act="start" ${pool.length ? '' : 'disabled'}>Start ${ex ? 'exam' : 'practice test'}</button></div></div>`;
   return h;
 }
@@ -108,7 +108,7 @@ function renderRun(t) {
 function renderResult(t) {
   const prac = t.mode === 'practice', sc = scoreT(t), pc = sc.tot ? (sc.c / sc.tot * 100).toFixed(1) : '0.0';
   let h = `<div class="card"><div class="mu">${t.timeUp ? "Time's up! " : ''}Your ${prac ? 'practice test' : 'exam'} score</div><div class="score">${sc.c} / ${sc.tot}</div><div class="scpct">${pc}%</div>
-<div class="mu">Time used: ${fmt(t.used)}${t.limit ? ' of ' + fmt(t.limit) : ''}${sc.pend ? ` · ${sc.pend} lab question${sc.pend > 1 ? 's' : ''} not marked yet (mark them below and the score updates)` : ''}</div>
+<div class="mu">Time used: ${fmt(t.used)}${t.limit ? ' of ' + fmt(t.limit) : ''}${sc.pend ? ` · ${sc.pend} self-marked question${sc.pend > 1 ? 's' : ''} not marked yet (mark them below and the score updates)` : ''}</div>
 <table><tr><th>Topic</th><th>Correct</th><th>%</th></tr>${Object.entries(sc.tp).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v[0]} / ${v[1]}</td><td>${Math.round(v[0] / v[1] * 100)}%</td></tr>`).join('')}</table>
 <div class="btns"><button class="btn pri" data-act="again">New ${prac ? 'practice test' : 'exam'}</button><button class="btn" data-act="gohome">Back to home</button></div>
 <div class="row"><label class="chk"><input type="checkbox" id="wrong" ${t.onlyWrong ? 'checked' : ''}> Only questions I got wrong</label><label class="chk"><input type="checkbox" id="onlyflag" ${t.onlyFlag ? 'checked' : ''}> Only flagged</label></div></div>`;

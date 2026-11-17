@@ -5,7 +5,7 @@
    - A new version waits until you tap "Update now" in the app (no surprise reloads mid-test).
    tools/stamp_version.py rewrites the BUILD and SHELL_FILES lines below. */
 // >>> stamped
-const BUILD = 'e233f168';
+const BUILD = 'd40b93e5';
 const SHELL_FILES = [
   './',
   'css/app.css',

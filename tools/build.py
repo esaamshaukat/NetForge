@@ -121,10 +121,14 @@ def load_brave(existing_ids, topic_names):
         if q.get("topic") not in topic_names:
             problems.append("%s: topic %r is not one of the ExamIce topics" % (qid, q.get("topic")))
             continue
-        if not q.get("question") or not q.get("options"):
+        is_lab = q.get("type") == "lab"      # drag & drop: no options, the solution is the answer
+        if not q.get("question") or (not is_lab and not q.get("options")):
             problems.append("%s: missing question text or options" % qid)
             continue
-        if not q.get("correctAnswer"):
+        if is_lab and not q.get("solution"):
+            problems.append("%s: no solution" % qid)
+            continue
+        if not is_lab and not q.get("correctAnswer"):
             problems.append("%s: no correct answer" % qid)
             continue
         seen.add(qid)
@@ -341,7 +345,7 @@ def main():
         bv = [q for q in by[t] if q.get("bank") == "brave"]
         qa = {q["id"]: text(q) for q in ex}
         qb = {q["id"]: q.get("explanation", "") for q in ex}
-        qa2 = {q["id"]: text(q) + " " + (q.get("exhibit") or "") for q in bv}
+        qa2 = {q["id"]: text(q) + " " + (q.get("exhibit") or "") + " " + (q.get("solution") or "") for q in bv}
         qb2 = {q["id"]: "" for q in bv}
         cl = cby.get(t, [])
         ca = {c["id"]: strip_html(c["f"]) for c in cl}
